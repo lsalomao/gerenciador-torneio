@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block title %}Aplicar W.O. — Gerenciador de Torneio{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto">
+    <h1 class="text-xl font-bold mb-4">Aplicar W.O.</h1>
+    <div class="bg-white p-6 rounded-lg border">
+        <p class="mb-4">A aplicação de W.O. finaliza a partida automaticamente e ignora quaisquer sets. Selecione a equipe vencedora:</p>
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label class="block mb-2 text-sm font-medium">Vencedor W.O.</label>
+                <select name="vencedor" class="w-full border rounded px-3 py-2">
+                    <option value="">-- selecione --</option>
+                    <option value="{{ partida.equipe_a.pk }}">{{ partida.equipe_a }}</option>
+                    <option value="{{ partida.equipe_b.pk }}">{{ partida.equipe_b }}</option>
+                </select>
+            </div>
+            <div class="flex gap-3">
+                <button type="submit" class="bg-red-600 text-white py-2 px-4 rounded">Aplicar W.O.</button>
+                <a href="{% url 'admin_partida_edit' partida.pk %}" class="bg-gray-100 py-2 px-4 rounded">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

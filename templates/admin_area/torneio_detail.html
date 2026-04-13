@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ torneio.nome }} — Gerenciador de Torneio{% endblock %}
+
+{% block content %}
+<div class="mb-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <a href="{% url 'admin_dashboard' %}" class="text-sm text-blue-600 hover:text-blue-800">← Voltar ao painel</a>
+            <h1 class="text-2xl font-bold text-gray-800 mt-1">{{ torneio.nome }}</h1>
+            <div class="flex items-center gap-3 mt-1">
+                <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+                    {% if torneio.status == 'CRIACAO' %}bg-gray-100 text-gray-600
+                    {% elif torneio.status == 'INSCRICOES' %}bg-blue-100 text-blue-700
+                    {% elif torneio.status == 'ANDAMENTO' %}bg-green-100 text-green-700
+                    {% elif torneio.status == 'ENCERRADO' %}bg-red-100 text-red-700
+                    {% endif %}">
+                    {{ torneio.get_status_display }}
+                </span>
+                <span class="text-sm text-gray-500">{{ torneio.modalidade }}</span>
+                <span class="text-sm text-gray-400">{{ torneio.local }}</span>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <form method="post" action="{% url 'admin_torneio_avancar_fase' torneio.pk %}" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit"
+                        class="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2 px-4 rounded-lg transition">
+                    ⚡ Avançar Fase
+                </button>
+            </form>
+            <a href="{% url 'admin_torneio_edit' torneio.pk %}"
+               class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 px-4 rounded-lg transition">
+                Editar Torneio
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 text-center">
+        <p class="text-2xl font-bold text-gray-800">{{ equipes.count }}</p>
+        <p class="text-xs text-gray-500 uppercase font-semibold">Equipes</p>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 text-center">
+        <p class="text-2xl font-bold text-gray-800">{{ fases.count }}</p>
+        <p class="text-xs text-gray-500 uppercase font-semibold">Fases</p>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 text-center">
+        <p class="text-2xl font-bold text-gray-800">{{ torneio.data_inicio|date:"d/m/Y" }}</p>
+        <p class="text-xs text-gray-500 uppercase font-semibold">Data Início</p>
+    </div>
+</div>
+
+<!-- EQUIPES E FASES - LAYOUT LADO A LADO -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- EQUIPES - Coluna menor com scroll -->
+    <div class="lg:col-span-1 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col max-h-[600px]">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+            <h2 class="text-lg font-bold text-gray-800">Equipes</h2>
+            <a href="{% url 'admin_equipe_create' torneio.pk %}"
+               class="bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold py-1.5 px-3 rounded-lg transition">
+                + Nova
+            </a>
+        </div>
+        {% if equipes %}
+        <div class="divide-y divide-gray-100 overflow-y-auto flex-1">
+            {% for equipe in equipes %}
+            <div class="px-5 py-2.5 hover:bg-gray-50 transition text-sm">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="flex-1 min-w-0">
+                        <p class="font-semibold text-gray-800 truncate">{{ equipe.nome }}</p>
+                        <p class="text-xs text-gray-400">{{ equipe.jogadores.count }} jogadores</p>
+                    </div>
+                    <div class="flex gap-1 flex-shrink-0">
+                        <a href="{% url 'admin_equipe_edit' equipe.pk %}" class="text-xs text-gray-400 hover:text-blue-600">✎</a>
+                        <a href="{% url 'admin_equipe_delete' equipe.pk %}" class="text-xs text-gray-400 hover:text-red-600">✕</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="px-5 py-6 text-center text-gray-400 text-sm">Nenhuma equipe cadastrada.</p>
+        {% endif %}
+    </div>
+
+    <!-- FASES - Coluna maior -->
+    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col max-h-[600px]">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
+            <h2 class="text-lg font-bold text-gray-800">Fases</h2>
+            <a href="{% url 'admin_fase_create' torneio.pk %}"
+               class="bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold py-1.5 px-3 rounded-lg transition">
+                + Nova Fase
+            </a>
+        </div>
+        {% if fases %}
+        <div class="divide-y divide-gray-100 overflow-y-auto flex-1">
+            {% for fase in fases %}
+            <div class="px-5 py-3 hover:bg-gray-50 transition">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex-1 min-w-0">
+                        <a href="{% url 'admin_fase_detail' fase.pk %}" class="font-semibold text-blue-600 hover:text-blue-800">
+                            {{ fase.nome }}
+                        </a>
+                        <div class="flex items-center gap-2 mt-1 flex-wrap">
+                            <span class="text-xs px-2 py-0.5 rounded-full
+                                {% if fase.tipo == 'GRUPO' %}bg-blue-50 text-blue-600{% else %}bg-purple-50 text-purple-600{% endif %}">
+                                {{ fase.get_tipo_display }}
+                            </span>
+                            <span class="text-xs text-gray-400">{{ fase.regra.nome }}</span>
+                        </div>
+                    </div>
+                    <div class="flex gap-1 flex-shrink-0">
+                        <a href="{% url 'admin_fase_edit' fase.pk %}" class="text-sm text-gray-400 hover:text-blue-600">✎</a>
+                        <a href="{% url 'admin_fase_delete' fase.pk %}" class="text-sm text-gray-400 hover:text-red-600">✕</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="px-5 py-6 text-center text-gray-400 text-sm">Nenhuma fase criada.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

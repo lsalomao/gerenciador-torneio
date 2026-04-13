@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block title %}Excluir {{ type }} — Gerenciador de Torneio{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto mt-10">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 text-center">
+        <div class="text-red-500 text-4xl mb-4">!</div>
+        <h1 class="text-xl font-bold text-gray-800 mb-2">Excluir {{ type }}</h1>
+        <p class="text-gray-500 mb-6">
+            Tem certeza que deseja excluir <strong>"{{ object }}"</strong>?<br>
+            <span class="text-sm text-red-500">Esta ação não pode ser desfeita.</span>
+        </p>
+        <form method="post" class="flex justify-center gap-3">
+            {% csrf_token %}
+            <button type="submit"
+                    class="bg-red-500 hover:bg-red-600 text-white font-semibold py-2.5 px-6 rounded-lg transition">
+                Sim, excluir
+            </button>
+            <a href="javascript:history.back()"
+               class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 px-6 rounded-lg transition">
+                Cancelar
+            </a>
+        </form>
+    </div>
+</div>
+{% endblock %}

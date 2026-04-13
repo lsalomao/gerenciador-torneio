@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}Sortear Equipes — {{ fase.nome }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <a href="{% url 'admin_fase_detail' fase.pk %}" class="text-sm text-blue-600 hover:text-blue-800 mb-4 inline-block">← Voltar para {{ fase.nome }}</a>
+    
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h1 class="text-2xl font-bold text-gray-800 mb-4">Sortear Equipes Automaticamente</h1>
+        
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <h3 class="font-semibold text-blue-900 mb-2">Como funciona o sorteio:</h3>
+            <ul class="text-sm text-blue-800 space-y-1">
+                <li>• As equipes serão distribuídas aleatoriamente entre os grupos</li>
+                <li>• A distribuição será balanceada (diferença máxima de 1 equipe entre grupos)</li>
+                <li>• Apenas equipes disponíveis (não alocadas em grupos) serão sorteadas</li>
+            </ul>
+        </div>
+        
+        <div class="mb-6">
+            <h3 class="font-semibold text-gray-700 mb-3">Grupos da Fase:</h3>
+            <div class="space-y-2">
+                {% for grupo in grupos %}
+                <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <span class="font-semibold text-gray-800">{{ grupo.nome }}</span>
+                        <span class="text-xs text-gray-500">{{ grupo.equipes.count }} equipes alocadas</span>
+                    </div>
+                    {% if grupo.equipes.all %}
+                    <div class="flex flex-wrap gap-1.5 mt-2">
+                        {% for equipe in grupo.equipes.all %}
+                        <span class="text-xs bg-white text-gray-600 px-2 py-0.5 rounded border border-gray-200">{{ equipe.nome }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% empty %}
+                <p class="text-sm text-gray-400">Nenhum grupo criado ainda.</p>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="mb-6">
+            <h3 class="font-semibold text-gray-700 mb-3">Equipes Disponíveis para Sorteio:</h3>
+            {% if equipes_disponiveis %}
+            <div class="flex flex-wrap gap-2">
+                {% for equipe in equipes_disponiveis %}
+                <span class="text-sm bg-green-50 text-green-700 px-3 py-1.5 rounded-lg border border-green-200">{{ equipe.nome }}</span>
+                {% endfor %}
+            </div>
+            <p class="text-sm text-gray-500 mt-2">Total: {{ equipes_disponiveis.count }} equipe(s)</p>
+            {% else %}
+            <p class="text-sm text-gray-400">Nenhuma equipe disponível para sorteio.</p>
+            {% endif %}
+        </div>
+        
+        <form method="post" class="flex gap-3">
+            {% csrf_token %}
+            <button type="submit" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition"
+                    {% if not equipes_disponiveis or not grupos %}disabled{% endif %}>
+                Confirmar Sorteio
+            </button>
+            <a href="{% url 'admin_fase_detail' fase.pk %}" 
+               class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-6 rounded-lg transition">
+                Cancelar
+            </a>
+        </form>
+        
+        {% if not equipes_disponiveis or not grupos %}
+        <p class="text-sm text-red-600 mt-3">
+            {% if not grupos %}
+            ⚠️ Crie grupos antes de sortear equipes.
+            {% elif not equipes_disponiveis %}
+            ⚠️ Nenhuma equipe disponível para sorteio.
+            {% endif %}
+        </p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

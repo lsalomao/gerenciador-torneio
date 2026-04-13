@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}Painel — Gerenciador de Torneio{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-800">Painel de Controle</h1>
+        <p class="text-gray-500 text-sm">Bem-vindo, {{ user.first_name|default:user.username }}</p>
+    </div>
+    <div class="flex gap-2">
+        <a href="{% url 'admin_torneio_create' %}"
+           class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition text-sm">
+            + Novo Torneio
+        </a>
+        <a href="{% url 'admin_regra_list' %}"
+           class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition text-sm">
+            Regras de Pontuação
+        </a>
+    </div>
+</div>
+
+{% if torneios %}
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for torneio in torneios %}
+    <a href="{% url 'admin_torneio_detail' torneio.pk %}" class="block">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-300 transition p-5">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-semibold px-2.5 py-1 rounded-full
+                    {% if torneio.status == 'CRIACAO' %}bg-gray-100 text-gray-600
+                    {% elif torneio.status == 'INSCRICOES' %}bg-blue-100 text-blue-700
+                    {% elif torneio.status == 'ANDAMENTO' %}bg-green-100 text-green-700
+                    {% elif torneio.status == 'ENCERRADO' %}bg-red-100 text-red-700
+                    {% endif %}">
+                    {{ torneio.get_status_display }}
+                </span>
+                <span class="text-xs text-gray-400">{{ torneio.data_inicio|date:"d/m/Y" }}</span>
+            </div>
+            <h3 class="text-lg font-bold text-gray-800 mb-1">{{ torneio.nome }}</h3>
+            <p class="text-sm text-gray-500">{{ torneio.modalidade }} — {{ torneio.local }}</p>
+            <div class="mt-3 flex items-center gap-3 text-xs text-gray-400">
+                <span>{{ torneio.equipes.count }} equipes</span>
+                <span>{{ torneio.fases.count }} fases</span>
+            </div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+    <p class="text-gray-400 text-lg mb-4">Nenhum torneio criado ainda.</p>
+    <a href="{% url 'admin_torneio_create' %}"
+       class="inline-block bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2.5 px-6 rounded-lg transition">
+        Criar primeiro torneio
+    </a>
+</div>
+{% endif %}
+{% endblock %}

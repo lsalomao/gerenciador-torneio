@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block title %}Iniciar Partida — Gerenciador de Torneio{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto">
+    <h1 class="text-xl font-bold mb-4">Iniciar partida</h1>
+    <div class="bg-white p-6 rounded-lg border">
+        <p class="mb-4">Deseja realmente iniciar a partida <strong>{{ partida }}</strong>? Isso mudará o status para <em>AO_VIVO</em>.</p>
+        <form method="post">
+            {% csrf_token %}
+            <div class="flex gap-3">
+                <button type="submit" class="bg-green-600 text-white py-2 px-4 rounded">Iniciar</button>
+                <a href="{% url 'admin_partida_edit' partida.pk %}" class="bg-gray-100 py-2 px-4 rounded">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

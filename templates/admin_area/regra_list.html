@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Regras de Pontuação — Gerenciador de Torneio{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+        <a href="{% url 'admin_dashboard' %}" class="text-sm text-blue-600 hover:text-blue-800">← Voltar ao painel</a>
+        <h1 class="text-2xl font-bold text-gray-800 mt-1">Regras de Pontuação</h1>
+    </div>
+    <a href="{% url 'admin_regra_create' %}"
+       class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition text-sm">
+        + Nova Regra
+    </a>
+</div>
+
+{% if regras %}
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <table class="w-full">
+        <thead class="bg-gray-50 border-b border-gray-200">
+            <tr>
+                <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase">Nome</th>
+                <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase hidden sm:table-cell">Sets p/ Vencer</th>
+                <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase hidden sm:table-cell">Pts/Set</th>
+                <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase hidden md:table-cell">Vantagem</th>
+                <th class="text-left px-5 py-3 text-xs font-semibold text-gray-500 uppercase hidden md:table-cell">Limite Direto</th>
+                <th class="px-5 py-3"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+            {% for regra in regras %}
+            <tr class="hover:bg-gray-50 transition">
+                <td class="px-5 py-3 font-semibold text-gray-800">{{ regra.nome }}</td>
+                <td class="px-5 py-3 text-sm text-gray-600 hidden sm:table-cell">{{ regra.sets_para_vencer }}</td>
+                <td class="px-5 py-3 text-sm text-gray-600 hidden sm:table-cell">{{ regra.pontos_por_set }}</td>
+                <td class="px-5 py-3 hidden md:table-cell">
+                    {% if regra.tem_vantagem %}
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Sim</span>
+                    {% else %}
+                    <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Não</span>
+                    {% endif %}
+                </td>
+                <td class="px-5 py-3 text-sm text-gray-600 hidden md:table-cell">{{ regra.limite_pontos_diretos|default:"—" }}</td>
+                <td class="px-5 py-3 text-right">
+                    <a href="{% url 'admin_regra_edit' regra.pk %}" class="text-sm text-gray-400 hover:text-blue-600 mr-2">Editar</a>
+                    <a href="{% url 'admin_regra_delete' regra.pk %}" class="text-sm text-gray-400 hover:text-red-600">Excluir</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+    <p class="text-gray-400 text-lg mb-4">Nenhuma regra cadastrada.</p>
+    <a href="{% url 'admin_regra_create' %}"
+       class="inline-block bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2.5 px-6 rounded-lg transition">
+        Criar primeira regra
+    </a>
+</div>
+{% endif %}
+{% endblock %}

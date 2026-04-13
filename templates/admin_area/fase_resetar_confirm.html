@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block title %}Resetar Fase — {{ fase.nome }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <a href="{% url 'admin_fase_detail' fase.pk %}" class="text-sm text-blue-600 hover:text-blue-800 mb-4 inline-block">← Voltar para {{ fase.nome }}</a>
+    
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div class="flex items-center gap-3 mb-4">
+            <div class="bg-red-100 rounded-full p-3">
+                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">Resetar Fase</h1>
+                <p class="text-sm text-gray-500">{{ fase.nome }}</p>
+            </div>
+        </div>
+        
+        {% if pode_resetar %}
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <h3 class="font-semibold text-yellow-900 mb-2">⚠️ Atenção! Esta ação é irreversível:</h3>
+            <ul class="text-sm text-yellow-800 space-y-1">
+                <li>• Todas as partidas desta fase serão <strong>excluídas</strong></li>
+                <li>• Todos os sets/resultados serão <strong>perdidos</strong></li>
+                <li>• A estrutura de grupos será <strong>mantida</strong></li>
+                <li>• Opcionalmente, você pode limpar as equipes dos grupos</li>
+            </ul>
+        </div>
+        
+        {% if stats %}
+        <div class="mb-6">
+            <h3 class="font-semibold text-gray-700 mb-3">Dados que serão removidos:</h3>
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-red-50 rounded-lg p-3 border border-red-200">
+                    <div class="text-sm text-red-600">Partidas</div>
+                    <div class="text-2xl font-bold text-red-700">{{ stats.total_partidas }}</div>
+                </div>
+                <div class="bg-red-50 rounded-lg p-3 border border-red-200">
+                    <div class="text-sm text-red-600">Partidas Agendadas</div>
+                    <div class="text-2xl font-bold text-red-700">{{ stats.partidas_agendadas }}</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="mb-6">
+                <label class="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-100 transition">
+                    <input type="checkbox" name="limpar_grupos" class="w-4 h-4 text-blue-600 rounded">
+                    <div>
+                        <div class="font-semibold text-gray-800 text-sm">Limpar equipes dos grupos</div>
+                        <div class="text-xs text-gray-500">Remove todas as equipes dos grupos (permite novo sorteio)</div>
+                    </div>
+                </label>
+            </div>
+            
+            <div class="flex gap-3">
+                <button type="submit" 
+                        class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-6 rounded-lg transition">
+                    Confirmar Reset
+                </button>
+                <a href="{% url 'admin_fase_detail' fase.pk %}" 
+                   class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-6 rounded-lg transition">
+                    Cancelar
+                </a>
+            </div>
+        </form>
+        
+        {% else %}
+        
+        <div class="bg-red-50 border-2 border-red-300 rounded-lg p-6 mb-6">
+            <h3 class="font-semibold text-red-900 text-lg mb-3">❌ Reset Bloqueado</h3>
+            <div class="text-sm text-red-800 whitespace-pre-line">{{ mensagem }}</div>
+        </div>
+        
+        <div class="flex gap-3">
+            <a href="{% url 'admin_fase_detail' fase.pk %}" 
+               class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-6 rounded-lg transition">
+                Voltar
+            </a>
+        </div>
+        
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
