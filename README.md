@@ -124,20 +124,4 @@ docker compose up -d db
 ```
 
 - Alguns containers esperam o banco ficar pronto. Se `migrate` falhar por causa de timeout, aguarde o DB e reexecute o migrate, ou use um pequeno script de espera dentro do container `web` antes de rodar `manage.py`.
-
-- Para rodar os comandos em ambientes diferentes (Linux/macOS/Windows), os comandos acima funcionam desde que o Docker Compose esteja instalado; no PowerShell basta executar `docker compose exec web ...`.
-
-Se quiser, eu adiciono um `Makefile` ou script `wait-for-db.sh` para automatizar a espera pelo banco no startup.
-
-
-docker compose exec -T db psql -U postgres -d torneio_db < scripts/fill_phase_results_db.sql
-
-Or use the provided wrapper which reads `.env` and runs the SQL with the correct credentials:
-
-```powershell
-# Bash (Git Bash / WSL / Linux / macOS)
-./scripts/run_fill_phase_results_db.sh
-
-# PowerShell (Windows)
-.\n+\scripts\run_fill_phase_results_db.ps1
 ```
