@@ -12,6 +12,22 @@ class Torneio(models.Model):
         ('ENCERRADO', 'Encerrado'),
     ]
 
+    QUANTIDADE_TIMES_CHOICES = [
+        (4, '4 times'),
+        (8, '8 times'),
+        (16, '16 times'),
+        (32, '32 times'),
+    ]
+
+    FORMATO_CHOICES = [
+        ('grupos_e_eliminatoria', 'Grupos + Eliminatória'),
+        ('so_eliminatoria', 'Só Eliminatória'),
+    ]
+
+    TIMES_POR_GRUPO_CHOICES = [
+        (4, '4 times por grupo'),
+    ]
+
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -25,6 +41,24 @@ class Torneio(models.Model):
     slug = models.SlugField(unique=True, blank=True, max_length=220)
     jogadores_por_equipe = models.PositiveIntegerField(default=2)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='CRIACAO')
+    quantidade_times = models.PositiveIntegerField(
+        choices=QUANTIDADE_TIMES_CHOICES,
+        null=True,
+        blank=True,
+        help_text="Quantidade total de times no torneio"
+    )
+    formato_torneio = models.CharField(
+        max_length=30,
+        choices=FORMATO_CHOICES,
+        null=True,
+        blank=True,
+        help_text="Formato de disputa do torneio"
+    )
+    times_por_grupo = models.PositiveIntegerField(
+        choices=TIMES_POR_GRUPO_CHOICES,
+        default=4,
+        help_text="Quantidade de times por grupo (apenas para grupos_e_eliminatoria)"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -109,6 +143,8 @@ class Fase(models.Model):
     regra = models.ForeignKey(
         RegraPontuacao,
         on_delete=models.PROTECT,
+        null=True,
+        blank=True,
         help_text="Regra de pontuação aplicada a todas as partidas desta fase."
     )
     nome = models.CharField(max_length=100, help_text="Ex: Fase de Grupos, Quartas de Final, Final")

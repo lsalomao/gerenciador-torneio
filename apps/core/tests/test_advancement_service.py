@@ -109,3 +109,43 @@ class AdvancementServiceTest(TestCase):
         
         # Isso não deve lançar erro, apenas retornar silenciosamente
         processar_finalizacao_partida(self.p2)
+
+    def test_semifinal_gera_final_e_terceiro_lugar_em_fases_separadas(self):
+        fase_semi = Fase.objects.create(
+            torneio=self.t, regra=self.regra, nome='Semi-Final',
+            tipo='ELIMINATORIA', ordem=3
+        )
+        fase_final = Fase.objects.create(
+            torneio=self.t, regra=self.regra, nome='Final',
+            tipo='ELIMINATORIA', ordem=4
+        )
+        fase_terceiro = Fase.objects.create(
+            torneio=self.t, regra=self.regra, nome='3º Lugar',
+            tipo='ELIMINATORIA', ordem=5
+        )
+
+        p1 = Partida.objects.create(
+            fase=fase_semi, equipe_a=self.e1, equipe_b=self.e2, rodada=1, ordem_cronograma=1,
+            status='FINALIZADA', vencedor=self.e1
+        )
+        p2 = Partida.objects.create(
+            fase=fase_semi, equipe_a=self.e3, equipe_b=self.e4, rodada=1, ordem_cronograma=2,
+            status='FINALIZADA', vencedor=self.e4
+        )
+
+        processar_finalizacao_partida(p1)
+        processar_finalizacao_partida(p2)
+
+        self.assertEqual(fase_semi.partidas.count(), 2)
+        self.assertEqual(fase_final.partidas.count(), 1)
+        self.assertEqual(fase_terceiro.partidas.count(), 1)
+
+        partida_final = fase_final.partidas.first()
+        self.assertEqual(partida_final.equipe_a, self.e1)
+        self.assertEqual(partida_final.equipe_b, self.e4)
+        self.assertEqual(partida_final.rodada, 1)
+
+        partida_terceiro = fase_terceiro.partidas.first()
+        self.assertEqual(partida_terceiro.equipe_a, self.e2)
+        self.assertEqual(partida_terceiro.equipe_b, self.e3)
+        self.assertEqual(partida_terceiro.rodada, 1)

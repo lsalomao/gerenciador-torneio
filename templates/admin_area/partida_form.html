@@ -3,101 +3,81 @@
 {% block title %}{{ title }} — Gerenciador de Torneio{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto">
-    <div class="mb-6">
-        <h1 class="text-2xl font-bold text-gray-800">{{ title }}</h1>
-    </div>
+<div class="max-w-2xl mx-auto px-2 sm:px-0">
+    <a href="{% url 'admin_fase_detail' partida.fase.pk %}" class="inline-flex items-center text-sm text-blue-700 hover:text-blue-800 font-medium mb-2">
+        ← voltar para fase de grupos
+    </a>
+    <p class="text-sm text-gray-500 mb-2">{{ partida.grupo.nome|default:"Sem grupo" }} · Rodada {{ partida.rodada }}</p>
+    <h1 class="text-3xl font-bold text-gray-900 text-center mb-5">{{ partida.equipe_a.nome }} vs {{ partida.equipe_b.nome }}</h1>
 
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <form method="post" class="space-y-4">
-            {% csrf_token %}
+    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6">
+        <div class="flex items-center justify-between mb-5">
+            <span class="inline-flex items-center gap-2 px-3 py-1 text-xs font-semibold uppercase tracking-wide rounded-full bg-red-100 text-red-700">
+                <span class="h-2 w-2 rounded-full bg-red-500"></span>ao vivo
+            </span>
+            <span class="text-xs font-medium text-gray-500">{{ partida.get_status_display }}</span>
+        </div>
 
-            {% for field in form %}
-                {% if field.is_hidden %}
-                    {{ field }}
-                {% elif field.name == 'grupo' and fase.tipo == 'ELIMINATORIA' %}
-                    <!-- Campo grupo oculto para fases eliminatórias -->
-                    {{ field }}
-                {% else %}
-                <div>
-                    <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                        {{ field.label }}
-                        {% if field.field.required %}<span class="text-red-500">*</span>{% endif %}
-                    </label>
-                    {% if field.field.widget.input_type == 'checkbox' %}
-                    <div class="flex items-center gap-2">
-                        {{ field }}
-                        <span class="text-sm text-gray-500">{{ field.help_text }}</span>
-                    </div>
-                    {% else %}
-                    {{ field }}
-                    {% endif %}
-                    {% if field.help_text and field.field.widget.input_type != 'checkbox' %}
-                    <p class="text-xs text-gray-400 mt-1">{{ field.help_text }}</p>
-                    {% endif %}
-                    {% if field.errors %}
-                    <p class="text-xs text-red-500 mt-1">{{ field.errors.0 }}</p>
-                    {% endif %}
-                </div>
-                {% endif %}
-            {% endfor %}
+        <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2 sm:gap-4">
+            <form method="post" class="flex flex-col items-center gap-3 sm:gap-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="increment_a">
+                <p class="text-base sm:text-lg font-semibold text-gray-800">{{ partida.equipe_a.nome }}</p>
+                <button type="submit" class="h-14 w-14 sm:h-16 sm:w-16 rounded-2xl bg-blue-600 text-white text-3xl font-bold leading-none active:scale-95 transition">+</button>
+            </form>
 
-            <div class="border-t border-gray-200 pt-4 mt-6">
-                <h3 class="text-lg font-semibold text-gray-800 mb-3">Sets</h3>
-                {{ formset.management_form }}
-                <div class="space-y-3">
-                    {% for set_form in formset %}
-                    <div class="flex gap-2 items-start p-3 bg-gray-50 rounded-lg">
-                        {% if set_form.instance.pk %}
-                            <input type="hidden" name="{{ set_form.prefix }}-id" value="{{ set_form.instance.pk }}">
-                        {% endif %}
-                        <div class="w-20">
-                            <label class="block text-xs text-gray-500 mb-0.5">Set</label>
-                            {{ set_form.numero_set }}
-                        </div>
-                        <div class="flex-1">
-                            <label class="block text-xs text-gray-500 mb-0.5">Pts Equipe A</label>
-                            {{ set_form.pontos_a }}
-                        </div>
-                        <div class="flex-1">
-                            <label class="block text-xs text-gray-500 mb-0.5">Pts Equipe B</label>
-                            {{ set_form.pontos_b }}
-                        </div>
-                        {% if set_form.DELETE %}
-                        <div class="flex items-end pb-2">
-                            <label class="flex items-center gap-1 text-xs text-red-500 cursor-pointer">
-                                {{ set_form.DELETE }} Remover
-                            </label>
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
-                </div>
+            <div class="text-gray-300 text-2xl sm:text-3xl font-semibold">×</div>
+
+            <form method="post" class="flex flex-col items-center gap-3 sm:gap-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="increment_b">
+                <p class="text-base sm:text-lg font-semibold text-gray-800">{{ partida.equipe_b.nome }}</p>
+                <button type="submit" class="h-14 w-14 sm:h-16 sm:w-16 rounded-2xl bg-blue-600 text-white text-3xl font-bold leading-none active:scale-95 transition">+</button>
+            </form>
+
+            <form method="post" class="flex flex-col items-center gap-3 sm:gap-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="decrement_a">
+                <p class="text-6xl sm:text-7xl font-extrabold text-blue-700 leading-none">{{ pontos_a }}</p>
+                <button type="submit" class="h-14 w-14 sm:h-16 sm:w-16 rounded-2xl bg-gray-100 text-gray-700 text-3xl font-bold leading-none active:scale-95 transition">−</button>
+            </form>
+
+            <div></div>
+
+            <form method="post" class="flex flex-col items-center gap-3 sm:gap-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="decrement_b">
+                <p class="text-6xl sm:text-7xl font-extrabold text-blue-700 leading-none">{{ pontos_b }}</p>
+                <button type="submit" class="h-14 w-14 sm:h-16 sm:w-16 rounded-2xl bg-gray-100 text-gray-700 text-3xl font-bold leading-none active:scale-95 transition">−</button>
+            </form>
+        </div>
+
+        {% if partida.fase.regra %}
+        <p class="text-center text-xs sm:text-sm text-gray-500 mt-5">primeiro a {{ partida.fase.regra.pontos_por_set }} pts · vantagem de 2</p>
+        {% else %}
+        <p class="text-center text-xs sm:text-sm text-red-500 mt-5">Configure a regra da fase para validar o placar.</p>
+        {% endif %}
+
+        <div class="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs sm:text-sm text-gray-600">
+            <div class="flex flex-wrap gap-x-6 gap-y-1 justify-center">
+                <p><span class="font-semibold">Fase:</span> {{ partida.fase.nome|lower }}</p>
+                <p><span class="font-semibold">Grupo:</span> {{ partida.grupo.nome|default:"Sem grupo" }}</p>
+                <p><span class="font-semibold">Jogo:</span> #{{ partida.ordem_cronograma }}</p>
             </div>
+        </div>
 
-            <div class="flex gap-3 pt-4">
-                <button type="submit"
-                        class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2.5 px-6 rounded-lg transition">
-                    Salvar
-                </button>
-                {% if partida.status == 'AGENDADA' %}
-                <a href="{% url 'admin_partida_iniciar' partida.pk %}"
-                   class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2.5 px-4 rounded-lg transition">
-                    Iniciar partida
-                </a>
-                {% endif %}
-                {% if partida.status != 'FINALIZADA' %}
-                <a href="{% url 'admin_partida_aplicar_wo' partida.pk %}"
-                   class="bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-4 rounded-lg transition">
-                    Aplicar W.O.
-                </a>
-                {% endif %}
-                <a href="javascript:history.back()"
-                   class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 px-6 rounded-lg transition">
-                    Cancelar
-                </a>
-            </div>
-        </form>
+        <div class="mt-6 flex items-stretch gap-3">
+            <form method="post" class="flex-1">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="finalizar">
+                <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-4 rounded-xl transition">Finalizar Jogo</button>
+            </form>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save">
+                <button type="submit" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-5 rounded-xl transition">Salvar</button>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}

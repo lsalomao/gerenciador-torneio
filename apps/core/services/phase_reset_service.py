@@ -48,16 +48,16 @@ def pode_resetar_fase(fase_id: int) -> Tuple[bool, str]:
 
 def resetar_fase(fase_id: int, limpar_grupos: bool = False) -> Dict:
     """
-    Reseta uma fase, removendo partidas e opcionalmente limpando grupos.
+    Reseta uma fase.
     
     O que é feito:
     - Remove todas as partidas da fase (SetResult são deletados em cascata)
-    - Opcionalmente remove associações de equipes dos grupos
-    - Mantém a estrutura de grupos (não deleta os objetos Grupo)
+    - Em fase de grupos, remove os grupos criados
+    - Em demais fases, opcionalmente remove associações de equipes dos grupos
     
     Args:
         fase_id: ID da fase
-        limpar_grupos: Se True, remove equipes dos grupos
+        limpar_grupos: Mantido por compatibilidade; em fase de grupos os grupos são removidos
         
     Returns:
         Dict com resultado:
@@ -90,17 +90,22 @@ def resetar_fase(fase_id: int, limpar_grupos: bool = False) -> Dict:
     
     with transaction.atomic():
         partidas_count = Partida.objects.filter(fase=fase).count()
-        
         Partida.objects.filter(fase=fase).delete()
-        
+
         grupos_limpos = 0
-        if limpar_grupos:
+        if fase.tipo == 'GRUPO':
+            grupos_limpos = fase.grupos.count()
+            fase.grupos.all().delete()
+        elif limpar_grupos:
             for grupo in fase.grupos.all():
                 if grupo.equipes.exists():
                     grupo.equipes.clear()
                     grupos_limpos += 1
-    
-    mensagem_grupos = f" e {grupos_limpos} grupo(s) limpo(s)" if limpar_grupos else ""
+
+    if fase.tipo == 'GRUPO':
+        mensagem_grupos = f" e {grupos_limpos} grupo(s) excluído(s)"
+    else:
+        mensagem_grupos = f" e {grupos_limpos} grupo(s) limpo(s)" if limpar_grupos else ""
     
     return {
         "success": True,

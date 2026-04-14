@@ -120,14 +120,14 @@ class PhaseResetServiceTest(TestCase):
         
         self.assertEqual(SetResult.objects.filter(partida=partida).count(), 0)
     
-    def test_resetar_mantem_grupos(self):
-        grupos_antes = list(Grupo.objects.filter(fase=self.fase_grupo).values_list('id', flat=True))
-        
+    def test_resetar_exclui_grupos_na_fase_de_grupos(self):
+        grupos_antes = Grupo.objects.filter(fase=self.fase_grupo).count()
+        self.assertGreater(grupos_antes, 0)
+
         resetar_fase(self.fase_grupo.id)
-        
-        grupos_depois = list(Grupo.objects.filter(fase=self.fase_grupo).values_list('id', flat=True))
-        
-        self.assertEqual(grupos_antes, grupos_depois)
+
+        grupos_depois = Grupo.objects.filter(fase=self.fase_grupo).count()
+        self.assertEqual(grupos_depois, 0)
     
     def test_resetar_limpa_equipes_opcional(self):
         equipes_antes = self.grupo_a.equipes.count()

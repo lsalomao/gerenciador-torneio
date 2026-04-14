@@ -92,27 +92,59 @@ def processar_finalizacao_partida(partida: Partida) -> None:
     if len(vencedores) <= 1:
         return
 
-    # criar próxima rodada: rodada_atual + 1
+    # caso de semifinal: criar FINAL e 3º LUGAR em fases seguintes (quando existirem)
+    if len(vencedores) == 2 and len(perdedores) >= 2:
+        fases_futuras = Fase.objects.filter(
+            torneio=fase.torneio,
+            tipo='ELIMINATORIA',
+            ordem__gt=fase.ordem,
+        ).order_by('ordem')
+
+        fase_final = fases_futuras.filter(nome__icontains='final').exclude(nome__icontains='semi').first()
+        fase_terceiro = fases_futuras.filter(
+            dj_models.Q(nome__icontains='3') | dj_models.Q(nome__icontains='terceiro')
+        ).first()
+
+        if not fase_final:
+            fase_final = fases_futuras.first()
+
+        if not fase_terceiro:
+            fase_terceiro = fases_futuras.exclude(pk=getattr(fase_final, 'pk', None)).first()
+
+        if fase_final and not fase_final.partidas.exists():
+            ordem_final = (fase_final.partidas.aggregate(dj_models.Max('ordem_cronograma'))['ordem_cronograma__max'] or 0) + 1
+            Partida.objects.create(
+                fase=fase_final,
+                equipe_a=vencedores[0],
+                equipe_b=vencedores[1],
+                ordem_cronograma=ordem_final,
+                rodada=1,
+            )
+
+        if fase_terceiro and not fase_terceiro.partidas.exists():
+            ordem_terceiro = (fase_terceiro.partidas.aggregate(dj_models.Max('ordem_cronograma'))['ordem_cronograma__max'] or 0) + 1
+            Partida.objects.create(
+                fase=fase_terceiro,
+                equipe_a=perdedores[0],
+                equipe_b=perdedores[1],
+                ordem_cronograma=ordem_terceiro,
+                rodada=1,
+            )
+
+        return
+
+    # criar próxima rodada dentro da mesma fase eliminatória
     proxima = rodada_atual + 1
-    # determinar próximo ordem_cronograma base
     max_ordem = fase.partidas.aggregate(dj_models.Max('ordem_cronograma'))['ordem_cronograma__max'] or 0
     ordem = max_ordem + 1
 
-    # emparelhar vencedores: 0 vs 1, 2 vs 3, ... (mantendo a ordem)
     for i in range(0, len(vencedores), 2):
         a = vencedores[i]
         b = vencedores[i+1] if i+1 < len(vencedores) else None
         if not b:
-            # bye: criar partida com apenas um time (ou pular)
             Partida.objects.create(fase=fase, equipe_a=a, equipe_b=a, ordem_cronograma=ordem, rodada=proxima)
         else:
             Partida.objects.create(fase=fase, equipe_a=a, equipe_b=b, ordem_cronograma=ordem, rodada=proxima)
         ordem += 1
-
-    # Se a rodada atual gerou a final (ou seja, proxima terá 1 partida), e a rodada atual era semifinal,
-    # criar também partida de 3º lugar usando os perdedores das semifinais (assumindo perdedores[0] vs perdedores[1]).
-    if len(vencedores) == 2 and len(perdedores) >= 2:
-        # criar partida de 3º lugar
-        Partida.objects.create(fase=fase, equipe_a=perdedores[0], equipe_b=perdedores[1], ordem_cronograma=ordem, rodada=proxima+1)
 
     return

@@ -1,4 +1,3 @@
-from itertools import combinations
 from typing import Dict, List
 from django.db import transaction
 
@@ -36,15 +35,15 @@ def gerar_round_robin(grupo_id: int) -> Dict:
             "message": "Grupo não encontrado"
         }
     
-    equipes = list(grupo.equipes.all())
-    
+    equipes = list(grupo.equipes.all().order_by('id'))
+
     if len(equipes) < 2:
         return {
             "success": False,
             "partidas_criadas": 0,
             "message": f"Grupo '{grupo.nome}' precisa de pelo menos 2 equipes (possui {len(equipes)})"
         }
-    
+
     partidas_existentes = Partida.objects.filter(grupo=grupo).exists()
     if partidas_existentes:
         return {
@@ -52,22 +51,38 @@ def gerar_round_robin(grupo_id: int) -> Dict:
             "partidas_criadas": 0,
             "message": f"Grupo '{grupo.nome}' já possui partidas. Use 'Resetar Fase' para gerar novamente"
         }
-    
+
     partidas_criadas = 0
-    
+    rotacao = equipes[:]
+    if len(rotacao) % 2 != 0:
+        rotacao.append(None)
+
+    total_rodadas = len(rotacao) - 1
+    jogos_por_rodada = len(rotacao) // 2
+
     with transaction.atomic():
-        for equipe_a, equipe_b in combinations(equipes, 2):
-            Partida.objects.create(
-                fase=grupo.fase,
-                grupo=grupo,
-                equipe_a=equipe_a,
-                equipe_b=equipe_b,
-                status='AGENDADA',
-                is_wo=False,
-                ordem_cronograma=0
-            )
-            partidas_criadas += 1
-    
+        for rodada in range(1, total_rodadas + 1):
+            for i in range(jogos_por_rodada):
+                equipe_a = rotacao[i]
+                equipe_b = rotacao[-(i + 1)]
+
+                if equipe_a is None or equipe_b is None:
+                    continue
+
+                Partida.objects.create(
+                    fase=grupo.fase,
+                    grupo=grupo,
+                    equipe_a=equipe_a,
+                    equipe_b=equipe_b,
+                    status='AGENDADA',
+                    is_wo=False,
+                    ordem_cronograma=0,
+                    rodada=rodada,
+                )
+                partidas_criadas += 1
+
+            rotacao = [rotacao[0], rotacao[-1], *rotacao[1:-1]]
+
     partidas_esperadas = (len(equipes) * (len(equipes) - 1)) // 2
     
     return {

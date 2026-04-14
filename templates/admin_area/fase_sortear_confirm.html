@@ -14,31 +14,8 @@
             <ul class="text-sm text-blue-800 space-y-1">
                 <li>• As equipes serão distribuídas aleatoriamente entre os grupos</li>
                 <li>• A distribuição será balanceada (diferença máxima de 1 equipe entre grupos)</li>
-                <li>• Apenas equipes disponíveis (não alocadas em grupos) serão sorteadas</li>
+                <li>• Após o sorteio, as partidas da fase serão geradas automaticamente</li>
             </ul>
-        </div>
-        
-        <div class="mb-6">
-            <h3 class="font-semibold text-gray-700 mb-3">Grupos da Fase:</h3>
-            <div class="space-y-2">
-                {% for grupo in grupos %}
-                <div class="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                    <div class="flex items-center justify-between">
-                        <span class="font-semibold text-gray-800">{{ grupo.nome }}</span>
-                        <span class="text-xs text-gray-500">{{ grupo.equipes.count }} equipes alocadas</span>
-                    </div>
-                    {% if grupo.equipes.all %}
-                    <div class="flex flex-wrap gap-1.5 mt-2">
-                        {% for equipe in grupo.equipes.all %}
-                        <span class="text-xs bg-white text-gray-600 px-2 py-0.5 rounded border border-gray-200">{{ equipe.nome }}</span>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                </div>
-                {% empty %}
-                <p class="text-sm text-gray-400">Nenhum grupo criado ainda.</p>
-                {% endfor %}
-            </div>
         </div>
         
         <div class="mb-6">
@@ -59,7 +36,7 @@
             {% csrf_token %}
             <button type="submit" 
                     class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-6 rounded-lg transition"
-                    {% if not equipes_disponiveis or not grupos %}disabled{% endif %}>
+                    {% if not equipes_disponiveis %}disabled{% endif %}>
                 Confirmar Sorteio
             </button>
             <a href="{% url 'admin_fase_detail' fase.pk %}" 
@@ -68,13 +45,9 @@
             </a>
         </form>
         
-        {% if not equipes_disponiveis or not grupos %}
+        {% if not equipes_disponiveis %}
         <p class="text-sm text-red-600 mt-3">
-            {% if not grupos %}
-            ⚠️ Crie grupos antes de sortear equipes.
-            {% elif not equipes_disponiveis %}
-            ⚠️ Nenhuma equipe disponível para sorteio.
-            {% endif %}
+            Nenhuma equipe disponível para sorteio.
         </p>
         {% endif %}
     </div>

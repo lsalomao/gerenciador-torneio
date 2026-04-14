@@ -14,11 +14,11 @@ services:
 
   web:
     build: .
-    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000 --reload
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:5008 --reload
     volumes:
       - .:/app
     ports:
-      - "8000:8000"
+      - "5008:5008"
     env_file:
       - .env
     depends_on:
