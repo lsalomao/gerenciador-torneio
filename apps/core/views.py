@@ -13,6 +13,10 @@ from .forms import (
     JogadorFormSet, FaseForm, GrupoForm,
     PartidaForm, SetResultFormSet
 )
+
+
+def home(request):
+    return render(request, 'home.html')
 from .services import (
     sortear_equipes_automatico,
     gerar_round_robin_fase,

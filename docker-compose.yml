@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "5432:5432"
+      - "5433:5432"
 
   web:
     build: .
@@ -23,16 +23,6 @@ services:
       - .env
     depends_on:
       - db
-
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-    volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf
-      - ./staticfiles:/app/staticfiles
-    depends_on:
-      - web
 
   pgadmin:
     image: dpage/pgadmin4:latest
