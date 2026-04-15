@@ -24,8 +24,8 @@
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
     {% for torneio in torneios %}
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-300 transition p-5">
-        <div class="flex items-start justify-between gap-3">
-            <a href="{% url 'admin_torneio_detail' torneio.pk %}" class="block flex-1 min-w-0">
+        <div>
+            <a href="{% url 'admin_torneio_detail' torneio.pk %}" class="block">
                 <div class="flex items-center justify-between mb-3">
                     <span class="text-xs font-semibold px-2.5 py-1 rounded-full
                         {% if torneio.status == 'CRIACAO' %}bg-gray-100 text-gray-600
@@ -44,7 +44,6 @@
                     <span>{{ torneio.fases.count }} fases</span>
                 </div>
             </a>
-            <a href="{% url 'admin_torneio_delete' torneio.pk %}" class="text-sm text-red-500 hover:text-red-700 font-medium">Excluir</a>
         </div>
     </div>
     {% endfor %}
