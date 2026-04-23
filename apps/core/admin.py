@@ -23,7 +23,7 @@ class SetResultInline(admin.TabularInline):
 
 @admin.register(Torneio)
 class TorneioAdmin(admin.ModelAdmin):
-    list_display = ('nome', 'modalidade', 'local', 'data_inicio', 'status', 'owner')
+    list_display = ('nome', 'modalidade', 'local', 'data_inicio', 'status', 'owner', 'polling_interval')
     list_filter = ('status', 'modalidade')
     search_fields = ('nome', 'slug')
     prepopulated_fields = {'slug': ('nome',)}
@@ -63,7 +63,7 @@ class PartidaInline(admin.TabularInline):
 
 @admin.register(Fase)
 class FaseAdmin(admin.ModelAdmin):
-    list_display = ('nome', 'torneio', 'tipo', 'ordem', 'regra', 'equipes_avancam')
+    list_display = ('nome', 'torneio', 'tipo', 'ordem', 'is_ativa', 'regra', 'equipes_avancam')
     list_filter = ('torneio', 'tipo')
     inlines = [GrupoInline, PartidaInline]
     actions = ['sortear_equipes_action', 'gerar_partidas_action', 'resetar_fase_action']

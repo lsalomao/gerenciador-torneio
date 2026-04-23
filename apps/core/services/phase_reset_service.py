@@ -1,4 +1,4 @@
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional
 from django.db import transaction
 
 from apps.core.models import Fase, Partida
@@ -46,18 +46,19 @@ def pode_resetar_fase(fase_id: int) -> Tuple[bool, str]:
     return True, "Fase pode ser resetada"
 
 
-def resetar_fase(fase_id: int, limpar_grupos: bool = False) -> Dict:
+def resetar_fase(fase_id: int, limpar_grupos: Optional[bool] = None) -> Dict:
     """
     Reseta uma fase.
     
     O que é feito:
     - Remove todas as partidas da fase (SetResult são deletados em cascata)
-    - Em fase de grupos, remove os grupos criados
-    - Em demais fases, opcionalmente remove associações de equipes dos grupos
+    - Se limpar_grupos=None (comportamento padrão legado): em fase de grupos, remove os grupos criados
+    - Se limpar_grupos=True: remove associações de equipes dos grupos
+    - Se limpar_grupos=False: preserva grupos e equipes
     
     Args:
         fase_id: ID da fase
-        limpar_grupos: Mantido por compatibilidade; em fase de grupos os grupos são removidos
+        limpar_grupos: Define política de limpeza dos grupos
         
     Returns:
         Dict com resultado:
@@ -93,19 +94,22 @@ def resetar_fase(fase_id: int, limpar_grupos: bool = False) -> Dict:
         Partida.objects.filter(fase=fase).delete()
 
         grupos_limpos = 0
-        if fase.tipo == 'GRUPO':
-            grupos_limpos = fase.grupos.count()
-            fase.grupos.all().delete()
+        if limpar_grupos is None:
+            if fase.tipo == 'GRUPO':
+                grupos_limpos = fase.grupos.count()
+                fase.grupos.all().delete()
         elif limpar_grupos:
             for grupo in fase.grupos.all():
                 if grupo.equipes.exists():
                     grupo.equipes.clear()
                     grupos_limpos += 1
 
-    if fase.tipo == 'GRUPO':
+    if limpar_grupos is None and fase.tipo == 'GRUPO':
         mensagem_grupos = f" e {grupos_limpos} grupo(s) excluído(s)"
+    elif limpar_grupos:
+        mensagem_grupos = f" e {grupos_limpos} grupo(s) limpo(s)"
     else:
-        mensagem_grupos = f" e {grupos_limpos} grupo(s) limpo(s)" if limpar_grupos else ""
+        mensagem_grupos = ""
     
     return {
         "success": True,

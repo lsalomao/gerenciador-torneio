@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ torneio.nome }} — Dashboard TV</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #0D1B2A;
+            --bg-left: #1A2B3C;
+            --bg-right: #132233;
+            --live: #FF6B00;
+            --text-main: #FFFFFF;
+            --text-muted: #A0AEC0;
+            --badge-ok: #38A169;
+            --badge-out: #718096;
+            --badge-mid: #D69E2E;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-main);
+            color: var(--text-main);
+            cursor: default;
+            transition: cursor 0.2s ease;
+        }
+
+        body.cursor-hidden,
+        body.cursor-hidden * {
+            cursor: none !important;
+        }
+
+        .tv-screen {
+            height: 100vh;
+            display: grid;
+            grid-template-rows: auto 1fr auto;
+            gap: 14px;
+            padding: 16px;
+            transition: opacity 0.35s ease;
+        }
+
+        .tv-screen.no-live {
+            grid-template-rows: auto 1fr;
+        }
+
+        .tv-screen.screen-fade {
+            opacity: 0.86;
+        }
+
+        .tv-header {
+            position: relative;
+            text-align: center;
+            padding: 8px 0;
+        }
+
+        .tv-title {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 800;
+        }
+
+        .tv-subtitle {
+            margin: 4px 0 0;
+            color: var(--text-muted);
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .tv-clock {
+            position: absolute;
+            top: 8px;
+            right: 0;
+            color: #cbd5e1;
+            font-size: 0.95rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+        }
+
+        .live-indicator {
+            margin-top: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 107, 0, 0.12);
+            border: 1px solid rgba(255, 107, 0, 0.5);
+            color: #ffd7bd;
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .live-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--live);
+            animation: pulse 1.9s ease-in-out infinite;
+        }
+
+        .hidden { display: none !important; }
+
+        .fs-button {
+            position: fixed;
+            right: 18px;
+            bottom: 18px;
+            z-index: 30;
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            background: rgba(8, 19, 30, 0.9);
+            color: #e2e8f0;
+            border-radius: 999px;
+            padding: 8px 14px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.88; }
+            50% { transform: scale(1.25); opacity: 0.38; }
+            100% { transform: scale(1); opacity: 0.88; }
+        }
+
+        .tv-main {
+            display: grid;
+            grid-template-columns: 60% 40%;
+            gap: 14px;
+            min-height: 0;
+        }
+
+        .left-column, .right-column { border-radius: 12px; min-height: 0; }
+
+        .left-column {
+            background: var(--bg-left);
+            padding: 12px;
+            min-height: 0;
+        }
+
+        .section {
+            min-height: 0;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 10px;
+            height: 100%;
+        }
+
+        .section-title {
+            margin: 0 0 8px;
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+        }
+
+        .groups-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            height: calc(100% - 26px);
+        }
+
+        .group-card {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.02);
+            transition: border-color 0.35s ease, box-shadow 0.35s ease;
+        }
+
+        .group-card.highlight {
+            border-color: rgba(255, 107, 0, 0.8);
+            box-shadow: inset 0 0 0 1px rgba(255, 107, 0, 0.25);
+        }
+
+        .group-name {
+            margin: 0 0 6px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #dfe8f0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+
+        th, td { padding: 3px; text-align: center; transition: color 0.25s ease, background-color 0.25s ease; }
+
+        th {
+            color: var(--text-muted);
+            font-weight: 600;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        tbody tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.035);
+        }
+
+        td.team {
+            text-align: left;
+            font-weight: 600;
+            max-width: 220px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .badge-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 4px;
+        }
+
+        .badge-label {
+            display: inline-flex;
+            align-items: center;
+            border-radius: 999px;
+            padding: 1px 6px;
+            font-size: 0.64rem;
+            font-weight: 700;
+            margin-left: 6px;
+            border: 1px solid transparent;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .badge-classificado { background: var(--badge-ok); }
+        .badge-disputa { background: var(--badge-mid); }
+        .badge-eliminado { background: var(--badge-out); }
+
+        .badge-label.badge-classificado {
+            color: #d0ffe3;
+            border-color: rgba(56, 161, 105, 0.5);
+            background: rgba(56, 161, 105, 0.15);
+        }
+
+        .badge-label.badge-disputa {
+            color: #fde8b0;
+            border-color: rgba(214, 158, 46, 0.5);
+            background: rgba(214, 158, 46, 0.15);
+        }
+
+        .badge-label.badge-eliminado {
+            color: #d7dee8;
+            border-color: rgba(113, 128, 150, 0.5);
+            background: rgba(113, 128, 150, 0.15);
+        }
+
+        .elims {
+            display: grid;
+            gap: 8px;
+            height: calc(100% - 26px);
+            grid-template-columns: 1fr;
+        }
+
+        .elim-card {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.02);
+            display: grid;
+            gap: 6px;
+        }
+
+        .elim-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #dfe8f0;
+        }
+
+        .elim-line {
+            display: grid;
+            grid-template-columns: 1fr auto auto auto 1fr;
+            gap: 8px;
+            align-items: center;
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .elim-line .team-a { text-align: right; }
+        .elim-line .team-b { text-align: left; }
+
+        .status-pill {
+            display: inline-flex;
+            justify-self: start;
+            width: fit-content;
+            border-radius: 999px;
+            padding: 2px 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #e2e8f0;
+        }
+
+        .status-pill.live {
+            border-color: rgba(255, 107, 0, 0.7);
+            color: #ffd7bd;
+            background: rgba(255, 107, 0, 0.13);
+            animation: pulse 1.9s ease-in-out infinite;
+        }
+
+        .right-column {
+            background: var(--bg-right);
+            padding: 12px;
+            display: grid;
+            grid-template-rows: 1fr;
+        }
+
+        .live-card {
+            border: 1px solid rgba(255, 107, 0, 0.55);
+            border-radius: 12px;
+            padding: 12px;
+            background: rgba(255, 107, 0, 0.06);
+            display: grid;
+            gap: 12px;
+            align-content: start;
+        }
+
+        .live-top { display: flex; justify-content: center; }
+
+        .teams-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            text-align: center;
+            font-weight: 800;
+            font-size: 1.5rem;
+        }
+
+        .sets-row {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            text-align: center;
+            font-size: 2rem;
+            font-weight: 800;
+        }
+
+        .score-row { text-align: center; }
+
+        .score-label {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .score-main {
+            margin-top: 4px;
+            font-size: 4rem;
+            line-height: 1;
+            font-weight: 800;
+            color: #fff;
+            transition: opacity 0.28s ease, transform 0.28s ease;
+        }
+
+        .score-main.flash {
+            opacity: 0.65;
+            transform: translateY(-2px);
+        }
+
+        .next-card {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            display: grid;
+            gap: 12px;
+            align-content: start;
+        }
+
+        .next-title {
+            text-align: center;
+            font-size: 1rem;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .next-teams {
+            text-align: center;
+            font-weight: 800;
+            font-size: 1.5rem;
+        }
+
+        .next-meta {
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .empty-state {
+            height: calc(100% - 26px);
+            display: grid;
+            place-items: center;
+            color: var(--text-muted);
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .live-footer {
+            border-radius: 10px;
+            overflow: hidden;
+            background: #000;
+            height: 200px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            display: grid;
+            grid-template-rows: auto 1fr;
+        }
+
+        .live-footer-title {
+            font-size: 0.76rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            color: #d3d9e2;
+            background: rgba(19, 34, 51, 0.92);
+            padding: 6px 10px;
+            text-transform: uppercase;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+        }
+
+        .live-footer iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <button class="fs-button" id="fs-button" type="button">Entrar em Tela Cheia</button>
+
+    <div class="tv-screen{% if not live_url %} no-live{% endif %}" id="tv-screen">
+        <header class="tv-header">
+            <h1 class="tv-title" id="tv-title">{{ torneio.nome }}</h1>
+            <p class="tv-subtitle" id="tv-subtitle">Carregando fase...</p>
+            <div class="tv-clock" id="tv-clock">--:--</div>
+            <div class="live-indicator hidden" id="header-live-indicator"><span class="live-dot"></span> AO VIVO</div>
+        </header>
+
+        <main class="tv-main">
+            <section class="left-column">
+                <div class="section" id="left-section"></div>
+            </section>
+
+            <aside class="right-column">
+                <div class="live-card hidden" id="live-card">
+                    <div class="live-top">
+                        <div class="live-indicator"><span class="live-dot"></span> AO VIVO</div>
+                    </div>
+                    <div class="teams-row">
+                        <div id="live-team-a">-</div>
+                        <div id="live-team-b">-</div>
+                    </div>
+                    <!-- <div class="sets-row">
+                        <span id="live-sets-a">0</span>
+                        <span>×</span>
+                        <span id="live-sets-b">0</span>
+                    </div> -->
+                    <div class="score-row">
+                        <div class="score-label">Set atual</div>
+                        <div class="score-main" id="live-current-set">0 × 0</div>
+                    </div>
+                </div>
+
+                <div class="next-card hidden" id="next-card">
+                    <div class="next-title">Próximo Jogo</div>
+                    <div class="next-teams" id="next-teams">- VS -</div>
+                    <div class="next-meta" id="next-meta">Aguardando definição de tabela</div>
+                </div>
+            </aside>
+        </main>
+
+        {% if live_url %}
+            <footer class="live-footer">
+                <div class="live-footer-title">ASSISTA AO VIVO</div>
+                <iframe src="{{ live_url }}" allowfullscreen></iframe>
+            </footer>
+        {% endif %}
+    </div>
+
+    {{ initial_dashboard|json_script:"initial-dashboard-data" }}
+    {{ initial_live|json_script:"initial-live-data" }}
+
+    <script>
+        const slug = "{{ torneio.slug|escapejs }}";
+        const intervalMs = "{{ polling_interval }}";
+        const dashboardUrl = "{{ dashboard_url }}";
+        const liveUrl = "{{ live_data_url }}";
+
+        const leftSection = document.getElementById('left-section');
+        const subtitle = document.getElementById('tv-subtitle');
+        const headerLiveIndicator = document.getElementById('header-live-indicator');
+        const liveCard = document.getElementById('live-card');
+        const nextCard = document.getElementById('next-card');
+        const tvScreen = document.getElementById('tv-screen');
+        const fsButton = document.getElementById('fs-button');
+        const tvClock = document.getElementById('tv-clock');
+        const liveCurrentSet = document.getElementById('live-current-set');
+        let lastCurrentSetText = liveCurrentSet.textContent;
+        let lastFaseTipo = null;
+        let cursorTimer;
+
+        function badgeClass(position, cutoff) {
+            if (!cutoff) {
+                return 'badge-disputa';
+            }
+            if (position <= cutoff) {
+                return 'badge-classificado';
+            }
+            if (position === cutoff + 1) {
+                return 'badge-disputa';
+            }
+            return 'badge-eliminado';
+        }
+
+        function badgeLabel(position, cutoff) {
+            if (!cutoff) {
+                return 'Disputa';
+            }
+            if (position <= cutoff) {
+                return 'Classificado';
+            }
+            if (position === cutoff + 1) {
+                return 'Disputa';
+            }
+            return 'Eliminado';
+        }
+
+        function updateClock() {
+            const now = new Date();
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            tvClock.textContent = `${hh}:${mm}`;
+        }
+
+        function activateFullscreen() {
+            if (document.fullscreenElement) {
+                fsButton.classList.add('hidden');
+                return;
+            }
+            if (!document.documentElement.requestFullscreen) {
+                return;
+            }
+            document.documentElement.requestFullscreen().then(() => {
+                fsButton.classList.add('hidden');
+            }).catch(() => {
+            });
+        }
+
+        function scheduleCursorHide() {
+            clearTimeout(cursorTimer);
+            document.body.classList.remove('cursor-hidden');
+            cursorTimer = setTimeout(() => {
+                document.body.classList.add('cursor-hidden');
+            }, 5000);
+        }
+
+        function renderGroups(dashboardData) {
+            const grupos = dashboardData.grupos || [];
+            if (!grupos.length) {
+                leftSection.innerHTML = '<h2 class="section-title">Classificação — Fase de Grupos</h2><div class="empty-state">Aguardando definição de tabela</div>';
+                return;
+            }
+            const cutoff = dashboardData.fase_ativa?.equipes_avancam || 0;
+            const liveGrupoId = dashboardData.live_match?.grupo_id;
+            const groupsHtml = grupos.map((grupo) => {
+                const linhasBase = grupo.classificacao || [];
+                const linhas = linhasBase.map((row) => {
+                    const badge = badgeClass(row.posicao, cutoff);
+                    const label = badgeLabel(row.posicao, cutoff);
+                    return `<tr><td>${row.posicao}</td><td class="team"><span class="badge-dot ${badge}"></span>${row.equipe}<span class="badge-label ${badge}">${label}</span></td><td>${row.jogos}</td><td>${row.vitorias}</td><td>${row.derrotas}</td><td>${row.saldo_sets}</td><td>${row.saldo_pontos}</td></tr>`;
+                }).join('');
+                const body = linhas || '<tr><td colspan="7">Sem partidas registradas</td></tr>';
+                const highlight = liveGrupoId && Number(liveGrupoId) === Number(grupo.id) ? 'highlight' : '';
+                return `<article class="group-card ${highlight}"><h3 class="group-name">${grupo.nome.toUpperCase()}</h3><table><thead><tr><th>Pos</th><th>Equipe</th><th>J</th><th>V</th><th>D</th><th>SG</th><th>SP</th></tr></thead><tbody>${body}</tbody></table></article>`;
+            }).join('');
+            leftSection.innerHTML = `<h2 class="section-title">Classificação — Fase de Grupos</h2><div class="groups-grid">${groupsHtml}</div>`;
+        }
+
+        function renderEliminatoria(dashboardData) {
+            const confrontos = dashboardData.confrontos || [];
+            if (!confrontos.length) {
+                leftSection.innerHTML = '<h2 class="section-title">Confrontos — Eliminatória</h2><div class="empty-state">Aguardando definição de tabela</div>';
+                return;
+            }
+            const cards = confrontos.map((confronto, index) => {
+                const sets = confronto.sets || [];
+                const ganhosA = sets.filter((s) => s.pontos_a > s.pontos_b).length;
+                const ganhosB = sets.filter((s) => s.pontos_b > s.pontos_a).length;
+                const status = confronto.status || 'AGENDADA';
+                const meta = status === 'FINALIZADA' ? 'Finalizado' : status === 'AO_VIVO' ? 'AO VIVO' : `Jogo ${confronto.ordem_cronograma || index + 1}`;
+                const statusClass = status === 'AO_VIVO' ? 'status-pill live' : 'status-pill';
+                const score = status === 'AGENDADA' ? '<span></span><span>VS</span><span></span>' : `<span>${ganhosA}</span><span>×</span><span>${ganhosB}</span>`;
+                const title = confronto.ordem_cronograma ? `Confronto ${confronto.ordem_cronograma}` : `Confronto ${index + 1}`;
+                return `<article class="elim-card"><div class="elim-title">${title}</div><div class="elim-line"><span class="team-a">${confronto.equipe_a}</span>${score}<span class="team-b">${confronto.equipe_b}</span></div><div class="${statusClass}">${meta}</div></article>`;
+            }).join('');
+            leftSection.innerHTML = `<h2 class="section-title">Confrontos — Eliminatória</h2><div class="elims">${cards}</div>`;
+        }
+
+        function renderSidebar(dashboardData) {
+            const fase = dashboardData.fase_ativa;
+            if (!fase) {
+                subtitle.textContent = 'Aguardando definição de fase';
+                leftSection.innerHTML = '<div class="empty-state">Aguardando definição de tabela</div>';
+                return;
+            }
+            subtitle.textContent = fase.nome;
+            if (lastFaseTipo && lastFaseTipo !== fase.tipo) {
+                tvScreen.classList.add('screen-fade');
+                setTimeout(() => tvScreen.classList.remove('screen-fade'), 280);
+            }
+            lastFaseTipo = fase.tipo;
+            if (fase.tipo === 'GRUPO') {
+                renderGroups(dashboardData);
+            } else {
+                renderEliminatoria(dashboardData);
+            }
+        }
+
+        function renderLivePanel(liveData) {
+            const highlight = liveData.highlight;
+            if (!highlight) {
+                headerLiveIndicator.classList.add('hidden');
+                liveCard.classList.add('hidden');
+                nextCard.classList.remove('hidden');
+                document.getElementById('next-teams').textContent = '- VS -';
+                document.getElementById('next-meta').textContent = 'Aguardando definição de tabela';
+                return;
+            }
+
+            if (highlight.status === 'AO_VIVO') {
+                headerLiveIndicator.classList.remove('hidden');
+                nextCard.classList.add('hidden');
+                liveCard.classList.remove('hidden');
+                document.getElementById('live-team-a').textContent = highlight.equipe_a;
+                document.getElementById('live-team-b').textContent = highlight.equipe_b;
+                // document.getElementById('live-sets-a').textContent = String(highlight.sets_ganhos_a || 0);
+                // document.getElementById('live-sets-b').textContent = String(highlight.sets_ganhos_b || 0);
+                const sets = highlight.sets || [];
+                const current = sets.length ? sets[sets.length - 1] : { pontos_a: 0, pontos_b: 0 };
+                const currentText = `${current.pontos_a} × ${current.pontos_b}`;
+                if (lastCurrentSetText !== currentText) {
+                    liveCurrentSet.classList.add('flash');
+                    setTimeout(() => liveCurrentSet.classList.remove('flash'), 260);
+                }
+                liveCurrentSet.textContent = currentText;
+                lastCurrentSetText = currentText;
+            } else {
+                headerLiveIndicator.classList.add('hidden');
+                liveCard.classList.add('hidden');
+                nextCard.classList.remove('hidden');
+                document.getElementById('next-teams').textContent = `${highlight.equipe_a} VS ${highlight.equipe_b}`;
+                const meta = highlight.grupo ? `Jogo ${highlight.ordem_cronograma || '-'} • ${highlight.grupo}` : `Jogo ${highlight.ordem_cronograma || '-'}`;
+                document.getElementById('next-meta').textContent = meta;
+            }
+        }
+
+        async function updateDashboard() {
+            try {
+                const [dashboardRes, liveRes] = await Promise.all([fetch(dashboardUrl), fetch(liveUrl)]);
+                if (!dashboardRes.ok || !liveRes.ok) {
+                    return;
+                }
+                const dashboardData = await dashboardRes.json();
+                const liveData = await liveRes.json();
+                renderSidebar(dashboardData);
+                renderLivePanel(liveData);
+            } catch (error) {
+            }
+        }
+
+        const initialDashboard = JSON.parse(document.getElementById('initial-dashboard-data').textContent);
+        const initialLive = JSON.parse(document.getElementById('initial-live-data').textContent);
+        renderSidebar(initialDashboard);
+        renderLivePanel(initialLive);
+        updateClock();
+        setInterval(updateClock, 1000);
+        fsButton.addEventListener('click', activateFullscreen);
+        document.addEventListener('fullscreenchange', () => {
+            if (document.fullscreenElement) {
+                fsButton.classList.add('hidden');
+            }
+        });
+        ['mousemove', 'keydown', 'touchstart', 'pointermove'].forEach((eventName) => {
+            document.addEventListener(eventName, scheduleCursorHide, { passive: true });
+        });
+        scheduleCursorHide();
+        setInterval(updateDashboard, intervalMs);
+    </script>
+</body>
+</html>

@@ -39,6 +39,8 @@ class Torneio(models.Model):
     data_inicio = models.DateField()
     hora_inicio = models.TimeField()
     slug = models.SlugField(unique=True, blank=True, max_length=220)
+    polling_interval = models.IntegerField(default=10)
+    live_url = models.URLField(blank=True, null=True)
     jogadores_por_equipe = models.PositiveIntegerField(default=2)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='CRIACAO')
     quantidade_times = models.PositiveIntegerField(
@@ -154,11 +156,17 @@ class Fase(models.Model):
         default=2,
         help_text="Quantas equipes de cada grupo avançam para a próxima fase."
     )
+    is_ativa = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = 'Fase'
         verbose_name_plural = 'Fases'
         ordering = ['ordem']
+
+    def save(self, *args, **kwargs):
+        if self.is_ativa:
+            Fase.objects.filter(torneio=self.torneio, is_ativa=True).exclude(pk=self.pk).update(is_ativa=False)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.nome} — {self.torneio.nome}"

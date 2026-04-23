@@ -79,7 +79,7 @@ def sortear_equipes_automatico(fase_id: int) -> Dict:
     quantidade_configurada = fase.torneio.quantidade_times or 0
     total_equipes_cadastradas = fase.torneio.equipes.count()
 
-    if total_equipes_cadastradas < quantidade_configurada:
+    if quantidade_configurada and total_equipes_cadastradas < quantidade_configurada:
         faltam = quantidade_configurada - total_equipes_cadastradas
         return {
             "success": False,
@@ -88,7 +88,7 @@ def sortear_equipes_automatico(fase_id: int) -> Dict:
             "message": f"Cadastre todas as {quantidade_configurada} equipes antes de sortear (faltam {faltam})"
         }
 
-    if total_equipes_cadastradas > quantidade_configurada:
+    if quantidade_configurada and total_equipes_cadastradas > quantidade_configurada:
         return {
             "success": False,
             "grupos_preenchidos": 0,
@@ -99,29 +99,12 @@ def sortear_equipes_automatico(fase_id: int) -> Dict:
     grupos = list(fase.grupos.order_by('id'))
 
     if not grupos:
-        times_por_grupo = fase.torneio.times_por_grupo or 0
-        if times_por_grupo <= 0:
-            return {
-                "success": False,
-                "grupos_preenchidos": 0,
-                "equipes_distribuidas": 0,
-                "message": "Configuração inválida: times por grupo deve ser maior que zero"
-            }
-
-        num_grupos = quantidade_configurada // times_por_grupo
-        if num_grupos <= 0:
-            return {
-                "success": False,
-                "grupos_preenchidos": 0,
-                "equipes_distribuidas": 0,
-                "message": "Configuração inválida para criação automática de grupos"
-            }
-
-        with transaction.atomic():
-            for i in range(num_grupos):
-                Grupo.objects.create(fase=fase, nome=_nome_grupo_por_indice(i))
-
-        grupos = list(fase.grupos.order_by('id'))
+        return {
+            "success": False,
+            "grupos_preenchidos": 0,
+            "equipes_distribuidas": 0,
+            "message": "Nenhum grupo cadastrado para esta fase"
+        }
 
     equipes_disponiveis = list(
         Equipe.objects.filter(torneio=fase.torneio)

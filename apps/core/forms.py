@@ -54,6 +54,7 @@ class TorneioForm(forms.ModelForm):
         model = Torneio
         fields = [
             'nome', 'modalidade', 'local', 'data_inicio', 'hora_inicio',
+            'slug', 'polling_interval', 'live_url',
             'jogadores_por_equipe', 'quantidade_times', 'formato_torneio',
             'times_por_grupo', 'status'
         ]
@@ -63,6 +64,9 @@ class TorneioForm(forms.ModelForm):
             'local': TailwindInput(),
             'data_inicio': TailwindDateInput(),
             'hora_inicio': TailwindTimeInput(),
+            'slug': TailwindInput(),
+            'polling_interval': TailwindNumberInput(),
+            'live_url': TailwindInput(),
             'jogadores_por_equipe': TailwindNumberInput(),
             'quantidade_times': TailwindSelect(),
             'formato_torneio': TailwindSelect(),
@@ -152,13 +156,14 @@ JogadorFormSet = forms.inlineformset_factory(
 class FaseForm(forms.ModelForm):
     class Meta:
         model = Fase
-        fields = ['nome', 'tipo', 'regra', 'ordem', 'equipes_avancam']
+        fields = ['nome', 'tipo', 'regra', 'ordem', 'equipes_avancam', 'is_ativa']
         widgets = {
             'nome': TailwindInput(),
             'tipo': TailwindSelect(),
             'regra': TailwindSelect(),
             'ordem': TailwindNumberInput(),
             'equipes_avancam': TailwindNumberInput(),
+            'is_ativa': TailwindCheckbox(),
         }
 
     def __init__(self, *args, **kwargs):

@@ -2,6 +2,8 @@ from django import forms
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.http import JsonResponse
+from django.views.decorators.http import require_GET
 from .services.bracket_service import gerar_eliminatoria
 from .services.torneio_setup_service import criar_fases_torneio
 from .models import (
@@ -17,6 +19,75 @@ from .forms import (
 
 def home(request):
     return render(request, 'home.html')
+
+
+def _serialize_live_payload(torneio):
+    highlight = get_current_highlight(torneio)
+
+    if not highlight:
+        return {'torneio': torneio.nome, 'highlight': None}
+
+    sets = [
+        {
+            'numero_set': s.numero_set,
+            'pontos_a': s.pontos_a,
+            'pontos_b': s.pontos_b,
+        }
+        for s in highlight.sets.all()
+    ]
+
+    sets_ganhos_a = sum(1 for s in highlight.sets.all() if s.pontos_a > s.pontos_b)
+    sets_ganhos_b = sum(1 for s in highlight.sets.all() if s.pontos_b > s.pontos_a)
+
+    return {
+        'torneio': torneio.nome,
+        'highlight': {
+            'id': highlight.id,
+            'fase': highlight.fase.nome,
+            'status': highlight.status,
+            'ordem_cronograma': highlight.ordem_cronograma,
+            'grupo': highlight.grupo.nome if highlight.grupo else None,
+            'equipe_a': highlight.equipe_a.nome,
+            'equipe_b': highlight.equipe_b.nome,
+            'sets_ganhos_a': sets_ganhos_a,
+            'sets_ganhos_b': sets_ganhos_b,
+            'sets': sets,
+            'vencedor': highlight.vencedor.nome if highlight.vencedor else None,
+            'is_wo': highlight.is_wo,
+        },
+    }
+
+
+def public_torneio_tv(request, slug):
+    torneio = get_object_or_404(Torneio, slug=slug)
+    initial_dashboard = get_dashboard_context(torneio)
+    initial_live = _serialize_live_payload(torneio)
+
+    return render(request, 'public/tv_dashboard.html', {
+        'torneio': torneio,
+        'polling_interval': torneio.polling_interval * 1000,
+        'live_url': torneio.live_url,
+        'initial_dashboard': initial_dashboard,
+        'initial_live': initial_live,
+        'dashboard_url': f'/api/v1/public/torneio/{torneio.slug}/dashboard/',
+        'live_data_url': f'/api/v1/public/torneio/{torneio.slug}/live/',
+    })
+
+
+@require_GET
+def public_dashboard_data(request, slug):
+    torneio = get_object_or_404(Torneio, slug=slug)
+    data = get_dashboard_context(torneio)
+    return JsonResponse(data)
+
+
+@require_GET
+def public_live_data(request, slug):
+    torneio = get_object_or_404(Torneio, slug=slug)
+    data = _serialize_live_payload(torneio)
+    return JsonResponse(data)
+
+
 from .services import (
     sortear_equipes_automatico,
     gerar_round_robin_fase,
@@ -29,6 +100,7 @@ from .services.wo_service import aplicar_wo
 from .services.validation_service import validar_set
 from .services.ranking_service import rankear_grupo
 from .services.advancement_service import processar_finalizacao_partida
+from .services.public_data_service import get_dashboard_context, get_current_highlight
 
 
 def _configurar_formularios(form, fase):
