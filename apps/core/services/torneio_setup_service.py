@@ -108,14 +108,15 @@ def criar_fases_torneio(torneio):
     fases_config = FASES_CONFIG[config_key]
     fases_criadas = []
     
-    for nome, tipo, ordem, equipes_avancam in fases_config:
+    for index, (nome, tipo, ordem, equipes_avancam) in enumerate(fases_config):
         fase = Fase.objects.create(
             torneio=torneio,
             nome=nome,
             tipo=tipo,
             ordem=ordem,
-            equipes_avancam=equipes_avancam or 0,  # 0 para eliminatórias
-            regra=None  # O ADM vincula depois
+            equipes_avancam=equipes_avancam or 0,
+            regra=None,
+            is_ativa=index == 0,
         )
         fases_criadas.append(fase)
     

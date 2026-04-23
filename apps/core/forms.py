@@ -137,11 +137,13 @@ class EquipeForm(forms.ModelForm):
 class JogadorForm(forms.ModelForm):
     class Meta:
         model = Jogador
-        fields = ['nome', 'apelido', 'posicao']
+        fields = ['nome', 'apelido', 'posicao', 'celular', 'tamanho_camisa']
         widgets = {
             'nome': TailwindInput(),
             'apelido': TailwindInput(),
             'posicao': TailwindInput(),
+            'celular': TailwindInput(),
+            'tamanho_camisa': TailwindSelect(),
         }
 
 

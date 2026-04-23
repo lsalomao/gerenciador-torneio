@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -20,9 +21,12 @@
             --badge-mid: #D69E2E;
         }
 
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
 
-        html, body {
+        html,
+        body {
             margin: 0;
             padding: 0;
             width: 100%;
@@ -43,7 +47,7 @@
         .tv-screen {
             height: 100vh;
             display: grid;
-            grid-template-rows: auto 1fr auto;
+            grid-template-rows: auto minmax(0, 1fr) clamp(260px, 34vh, 420px);
             gap: 14px;
             padding: 16px;
             transition: opacity 0.35s ease;
@@ -108,7 +112,9 @@
             animation: pulse 1.9s ease-in-out infinite;
         }
 
-        .hidden { display: none !important; }
+        .hidden {
+            display: none !important;
+        }
 
         .fs-button {
             position: fixed;
@@ -126,9 +132,20 @@
         }
 
         @keyframes pulse {
-            0% { transform: scale(1); opacity: 0.88; }
-            50% { transform: scale(1.25); opacity: 0.38; }
-            100% { transform: scale(1); opacity: 0.88; }
+            0% {
+                transform: scale(1);
+                opacity: 0.88;
+            }
+
+            50% {
+                transform: scale(1.25);
+                opacity: 0.38;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 0.88;
+            }
         }
 
         .tv-main {
@@ -138,7 +155,132 @@
             min-height: 0;
         }
 
-        .left-column, .right-column { border-radius: 12px; min-height: 0; }
+        .tv-main.final-mode {
+            grid-template-columns: 1fr;
+            place-items: center;
+            align-content: center;
+        }
+
+        .tv-main.final-mode .left-column {
+            display: none;
+        }
+
+        .tv-main.final-mode .right-column {
+            width: min(1780px, 98vw);
+            max-width: 1780px;
+            background: transparent;
+            padding: 0;
+            grid-template-rows: auto;
+            justify-content: center;
+        }
+
+        .tv-main.final-mode .live-card,
+        .tv-main.final-mode .champion-card {
+            width: min(1700px, 96vw);
+            border-radius: 24px;
+            padding: 44px 56px;
+            gap: 28px;
+        }
+
+        .tv-main.final-mode .live-indicator {
+            font-size: 1.8rem;
+            padding: 12px 30px;
+            gap: 14px;
+        }
+
+        .tv-main.final-mode .live-dot {
+            width: 18px;
+            height: 18px;
+        }
+
+        .tv-main.final-mode .teams-row {
+            font-size: clamp(4.2rem, 8.4vw, 7.6rem);
+            gap: 34px;
+        }
+
+        .tv-main.final-mode .score-label {
+            font-size: 2.2rem;
+        }
+
+        .tv-main.final-mode .score-main {
+            font-size: clamp(8rem, 15vw, 13.5rem);
+            margin-top: 14px;
+            letter-spacing: 0.04em;
+        }
+
+        .tv-main.final-mode .champion-title {
+            font-size: 2.3rem;
+        }
+
+        .tv-main.final-mode .champion-label {
+            font-size: 1.6rem;
+            padding: 12px 30px;
+        }
+
+        .tv-main.final-mode .champion-team {
+            font-size: clamp(5rem, 9.6vw, 8.8rem);
+        }
+
+        .tv-main.final-mode .champion-players-title {
+            font-size: 1.9rem;
+        }
+
+        .tv-main.final-mode .champion-players li {
+            font-size: clamp(2.1rem, 4.4vw, 3.6rem);
+        }
+
+        .tv-main.final-mode .podio-grid {
+            gap: 30px;
+            min-height: 620px;
+        }
+
+        .tv-main.final-mode .podio-grid.two-items {
+            max-width: 1300px;
+        }
+
+        .tv-main.final-mode .podio-item {
+            border-radius: 18px;
+            padding: 22px 16px;
+        }
+
+        .tv-main.final-mode .podio-item.podio-campeao {
+            min-height: 460px;
+        }
+
+        .tv-main.final-mode .podio-item.podio-vice {
+            min-height: 370px;
+        }
+
+        .tv-main.final-mode .podio-item.podio-terceiro {
+            min-height: 300px;
+        }
+
+        .tv-main.final-mode .podio-posicao {
+            font-size: 1.45rem;
+        }
+
+        .tv-main.final-mode .podio-team {
+            font-size: clamp(2.4rem, 4.9vw, 4.4rem);
+        }
+
+        .tv-main.final-mode .podio-jogadores {
+            gap: 10px;
+        }
+
+        .tv-main.final-mode .podio-jogadores li {
+            font-size: clamp(1.25rem, 2.35vw, 2rem);
+        }
+
+        .tv-main.final-mode .next-card,
+        .tv-main.final-mode .upcoming-card {
+            display: none !important;
+        }
+
+        .left-column,
+        .right-column {
+            border-radius: 12px;
+            min-height: 0;
+        }
 
         .left-column {
             background: var(--bg-left);
@@ -197,7 +339,12 @@
             font-size: 0.8rem;
         }
 
-        th, td { padding: 3px; text-align: center; transition: color 0.25s ease, background-color 0.25s ease; }
+        th,
+        td {
+            padding: 3px;
+            text-align: center;
+            transition: color 0.25s ease, background-color 0.25s ease;
+        }
 
         th {
             color: var(--text-muted);
@@ -239,9 +386,17 @@
             letter-spacing: 0.04em;
         }
 
-        .badge-classificado { background: var(--badge-ok); }
-        .badge-disputa { background: var(--badge-mid); }
-        .badge-eliminado { background: var(--badge-out); }
+        .badge-classificado {
+            background: var(--badge-ok);
+        }
+
+        .badge-disputa {
+            background: var(--badge-mid);
+        }
+
+        .badge-eliminado {
+            background: var(--badge-out);
+        }
 
         .badge-label.badge-classificado {
             color: #d0ffe3;
@@ -292,8 +447,13 @@
             font-weight: 700;
         }
 
-        .elim-line .team-a { text-align: right; }
-        .elim-line .team-b { text-align: left; }
+        .elim-line .team-a {
+            text-align: right;
+        }
+
+        .elim-line .team-b {
+            text-align: left;
+        }
 
         .status-pill {
             display: inline-flex;
@@ -318,7 +478,10 @@
             background: var(--bg-right);
             padding: 12px;
             display: grid;
-            grid-template-rows: 1fr;
+            grid-template-rows: auto 1fr;
+            gap: 12px;
+            min-height: 0;
+            align-content: start;
         }
 
         .live-card {
@@ -331,7 +494,141 @@
             align-content: start;
         }
 
-        .live-top { display: flex; justify-content: center; }
+        .champion-card {
+            border: 1px solid rgba(255, 107, 0, 0.55);
+            border-radius: 12px;
+            padding: 20px;
+            background: rgba(255, 107, 0, 0.08);
+            display: grid;
+            gap: 14px;
+            text-align: center;
+        }
+
+        .champion-title {
+            font-size: 1rem;
+            color: var(--text-muted);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .champion-team {
+            font-size: 2.7rem;
+            font-weight: 800;
+            line-height: 1.1;
+        }
+
+        .champion-label {
+            display: inline-flex;
+            justify-self: center;
+            width: fit-content;
+            border-radius: 999px;
+            padding: 5px 14px;
+            border: 1px solid rgba(255, 107, 0, 0.7);
+            background: rgba(255, 107, 0, 0.2);
+            color: #ffd7bd;
+            font-size: 0.82rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .champion-players-title {
+            margin-top: 4px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+        }
+
+        .champion-players {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: grid;
+            gap: 6px;
+        }
+
+        .champion-players li {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #f8fafc;
+        }
+
+        .podio-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 16px;
+            align-items: end;
+            min-height: 420px;
+        }
+
+        .podio-grid.two-items {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            max-width: 1100px;
+            justify-self: center;
+            width: 100%;
+        }
+
+        .podio-item {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 12px;
+            display: grid;
+            gap: 10px;
+            text-align: center;
+            align-content: start;
+        }
+
+        .podio-item.podio-campeao {
+            border-color: rgba(255, 107, 0, 0.75);
+            background: rgba(255, 107, 0, 0.16);
+            min-height: 300px;
+            box-shadow: 0 16px 40px rgba(255, 107, 0, 0.16);
+        }
+
+        .podio-item.podio-vice {
+            min-height: 245px;
+        }
+
+        .podio-item.podio-terceiro {
+            min-height: 210px;
+        }
+
+        .podio-posicao {
+            font-size: 0.86rem;
+            font-weight: 800;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+        }
+
+        .podio-team {
+            font-size: 1.2rem;
+            font-weight: 800;
+            line-height: 1.1;
+        }
+
+        .podio-jogadores {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: grid;
+            gap: 4px;
+        }
+
+        .podio-jogadores li {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+
+        .live-top {
+            display: flex;
+            justify-content: center;
+        }
 
         .teams-row {
             display: grid;
@@ -351,7 +648,9 @@
             font-weight: 800;
         }
 
-        .score-row { text-align: center; }
+        .score-row {
+            text-align: center;
+        }
 
         .score-label {
             color: var(--text-muted);
@@ -381,6 +680,47 @@
             display: grid;
             gap: 12px;
             align-content: start;
+        }
+
+        .upcoming-card {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            display: grid;
+            grid-template-rows: auto 1fr;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .upcoming-list {
+            display: grid;
+            gap: 8px;
+            align-content: start;
+            overflow-y: auto;
+            min-height: 0;
+            padding-right: 4px;
+        }
+
+        .upcoming-item {
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            display: grid;
+            gap: 4px;
+        }
+
+        .upcoming-teams {
+            font-size: 1rem;
+            font-weight: 700;
+            text-align: center;
+        }
+
+        .upcoming-meta {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-align: center;
         }
 
         .next-title {
@@ -417,7 +757,8 @@
             border-radius: 10px;
             overflow: hidden;
             background: #000;
-            height: 200px;
+            height: 100%;
+            min-height: 0;
             border: 1px solid rgba(255, 255, 255, 0.15);
             display: grid;
             grid-template-rows: auto 1fr;
@@ -441,6 +782,7 @@
         }
     </style>
 </head>
+
 <body>
     <button class="fs-button" id="fs-button" type="button">Entrar em Tela Cheia</button>
 
@@ -466,30 +808,33 @@
                         <div id="live-team-a">-</div>
                         <div id="live-team-b">-</div>
                     </div>
-                    <!-- <div class="sets-row">
-                        <span id="live-sets-a">0</span>
-                        <span>×</span>
-                        <span id="live-sets-b">0</span>
-                    </div> -->
                     <div class="score-row">
                         <div class="score-label">Set atual</div>
                         <div class="score-main" id="live-current-set">0 × 0</div>
                     </div>
                 </div>
 
+                <div class="champion-card hidden" id="champion-card"></div>
+
                 <div class="next-card hidden" id="next-card">
                     <div class="next-title">Próximo Jogo</div>
                     <div class="next-teams" id="next-teams">- VS -</div>
                     <div class="next-meta" id="next-meta">Aguardando definição de tabela</div>
                 </div>
+
+                <div class="upcoming-card hidden" id="upcoming-card">
+                    <div class="next-title">Próximos Jogos</div>
+                    <div class="upcoming-list" id="upcoming-list"></div>
+                </div>
             </aside>
         </main>
 
         {% if live_url %}
-            <footer class="live-footer">
-                <div class="live-footer-title">ASSISTA AO VIVO</div>
-                <iframe src="{{ live_url }}" allowfullscreen></iframe>
-            </footer>
+        <footer class="live-footer">
+            <div class="live-footer-title">ASSISTA AO VIVO</div>
+            <iframe src="{{ live_url }}" frameborder="0" frameborder="0"
+                allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+        </footer>
         {% endif %}
     </div>
 
@@ -506,8 +851,12 @@
         const subtitle = document.getElementById('tv-subtitle');
         const headerLiveIndicator = document.getElementById('header-live-indicator');
         const liveCard = document.getElementById('live-card');
+        const championCard = document.getElementById('champion-card');
         const nextCard = document.getElementById('next-card');
+        const upcomingCard = document.getElementById('upcoming-card');
+        const upcomingList = document.getElementById('upcoming-list');
         const tvScreen = document.getElementById('tv-screen');
+        const tvMain = document.querySelector('.tv-main');
         const fsButton = document.getElementById('fs-button');
         const tvClock = document.getElementById('tv-clock');
         const liveCurrentSet = document.getElementById('live-current-set');
@@ -516,36 +865,55 @@
         let cursorTimer;
 
         function badgeClass(position, cutoff) {
-            if (!cutoff) {
-                return 'badge-disputa';
-            }
             if (position <= cutoff) {
                 return 'badge-classificado';
-            }
-            if (position === cutoff + 1) {
-                return 'badge-disputa';
             }
             return 'badge-eliminado';
         }
 
         function badgeLabel(position, cutoff) {
-            if (!cutoff) {
-                return 'Disputa';
-            }
             if (position <= cutoff) {
                 return 'Classificado';
-            }
-            if (position === cutoff + 1) {
-                return 'Disputa';
             }
             return 'Eliminado';
         }
 
-        function updateClock() {
-            const now = new Date();
-            const hh = String(now.getHours()).padStart(2, '0');
-            const mm = String(now.getMinutes()).padStart(2, '0');
-            tvClock.textContent = `${hh}:${mm}`;
+        function isFinalPhase(faseNome) {
+            return (faseNome || '').trim().toLowerCase() === 'final';
+        }
+
+        function setFinalMode(enabled) {
+            if (enabled) {
+                tvMain.classList.add('final-mode');
+                return;
+            }
+            tvMain.classList.remove('final-mode');
+        }
+
+        function renderCampeao(dashboardData) {
+            const campeao = dashboardData.campeao;
+            if (!campeao) {
+                championCard.classList.add('hidden');
+                championCard.innerHTML = '';
+                return;
+            }
+            const podio = dashboardData.podio || {};
+            const getJogadores = (time) => {
+                if (!time || !time.jogadores || !time.jogadores.length) {
+                    return '<div class="next-meta">Sem jogadores cadastrados</div>';
+                }
+                return `<ul class="podio-jogadores">${time.jogadores.map((jogador) => `<li>${jogador}</li>`).join('')}</ul>`;
+            };
+            const podioItems = [
+                `<article class="podio-item podio-campeao"><div class="podio-posicao">1º Lugar</div><div class="podio-team">${podio.campeao?.nome || campeao.nome}</div>${getJogadores(podio.campeao || campeao)}</article>`,
+                `<article class="podio-item podio-vice"><div class="podio-posicao">2º Lugar</div><div class="podio-team">${podio.vice?.nome || '-'}</div>${getJogadores(podio.vice)}</article>`,
+            ];
+            if (podio.terceiro) {
+                podioItems.push(`<article class="podio-item podio-terceiro"><div class="podio-posicao">3º Lugar</div><div class="podio-team">${podio.terceiro.nome}</div>${getJogadores(podio.terceiro)}</article>`);
+            }
+            const podioGridClass = podio.terceiro ? 'podio-grid' : 'podio-grid two-items';
+            championCard.innerHTML = `<div class="champion-title">Pódio Final</div><div class="${podioGridClass}">${podioItems.join('')}</div>`;
+            championCard.classList.remove('hidden');
         }
 
         function activateFullscreen() {
@@ -616,15 +984,24 @@
             const fase = dashboardData.fase_ativa;
             if (!fase) {
                 subtitle.textContent = 'Aguardando definição de fase';
+                setFinalMode(false);
+                championCard.classList.add('hidden');
                 leftSection.innerHTML = '<div class="empty-state">Aguardando definição de tabela</div>';
                 return;
             }
             subtitle.textContent = fase.nome;
+            const finalMode = fase.tipo === 'ELIMINATORIA' && isFinalPhase(fase.nome);
+            setFinalMode(finalMode);
+            renderCampeao(dashboardData);
             if (lastFaseTipo && lastFaseTipo !== fase.tipo) {
                 tvScreen.classList.add('screen-fade');
                 setTimeout(() => tvScreen.classList.remove('screen-fade'), 280);
             }
             lastFaseTipo = fase.tipo;
+            if (finalMode) {
+                leftSection.innerHTML = '';
+                return;
+            }
             if (fase.tipo === 'GRUPO') {
                 renderGroups(dashboardData);
             } else {
@@ -632,14 +1009,30 @@
             }
         }
 
+        function renderUpcomingMatches(matches) {
+            if (!matches.length) {
+                upcomingCard.classList.add('hidden');
+                upcomingList.innerHTML = '';
+                return;
+            }
+            const items = matches.map((match) => {
+                const baseMeta = `Jogo ${match.ordem_cronograma || '-'}`;
+                const phaseOrGroup = match.grupo || match.fase;
+                const meta = phaseOrGroup ? `${baseMeta} • ${phaseOrGroup}` : baseMeta;
+                return `<article class="upcoming-item"><div class="upcoming-teams">${match.equipe_a} VS ${match.equipe_b}</div><div class="upcoming-meta">${meta}</div></article>`;
+            }).join('');
+            upcomingList.innerHTML = items;
+            upcomingCard.classList.remove('hidden');
+        }
+
         function renderLivePanel(liveData) {
             const highlight = liveData.highlight;
+            const upcomingMatches = liveData.upcoming_matches || [];
             if (!highlight) {
                 headerLiveIndicator.classList.add('hidden');
                 liveCard.classList.add('hidden');
-                nextCard.classList.remove('hidden');
-                document.getElementById('next-teams').textContent = '- VS -';
-                document.getElementById('next-meta').textContent = 'Aguardando definição de tabela';
+                nextCard.classList.add('hidden');
+                renderUpcomingMatches(upcomingMatches);
                 return;
             }
 
@@ -649,8 +1042,6 @@
                 liveCard.classList.remove('hidden');
                 document.getElementById('live-team-a').textContent = highlight.equipe_a;
                 document.getElementById('live-team-b').textContent = highlight.equipe_b;
-                // document.getElementById('live-sets-a').textContent = String(highlight.sets_ganhos_a || 0);
-                // document.getElementById('live-sets-b').textContent = String(highlight.sets_ganhos_b || 0);
                 const sets = highlight.sets || [];
                 const current = sets.length ? sets[sets.length - 1] : { pontos_a: 0, pontos_b: 0 };
                 const currentText = `${current.pontos_a} × ${current.pontos_b}`;
@@ -660,13 +1051,20 @@
                 }
                 liveCurrentSet.textContent = currentText;
                 lastCurrentSetText = currentText;
+                renderUpcomingMatches(upcomingMatches);
             } else {
                 headerLiveIndicator.classList.add('hidden');
                 liveCard.classList.add('hidden');
+                if (!upcomingMatches.length) {
+                    nextCard.classList.add('hidden');
+                    renderUpcomingMatches([]);
+                    return;
+                }
                 nextCard.classList.remove('hidden');
                 document.getElementById('next-teams').textContent = `${highlight.equipe_a} VS ${highlight.equipe_b}`;
                 const meta = highlight.grupo ? `Jogo ${highlight.ordem_cronograma || '-'} • ${highlight.grupo}` : `Jogo ${highlight.ordem_cronograma || '-'}`;
                 document.getElementById('next-meta').textContent = meta;
+                renderUpcomingMatches(upcomingMatches);
             }
         }
 
@@ -703,4 +1101,5 @@
         setInterval(updateDashboard, intervalMs);
     </script>
 </body>
+
 </html>

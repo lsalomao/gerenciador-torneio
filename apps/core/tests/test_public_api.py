@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.core.models import Equipe, Fase, Grupo, Partida, RegraPontuacao, SetResult, Torneio
+from apps.core.models import Equipe, Fase, Grupo, Jogador, Partida, RegraPontuacao, SetResult, Torneio
 
 User = get_user_model()
 
@@ -169,6 +169,133 @@ class PublicApiTest(TestCase):
 
         self.assertFalse(fase1.is_ativa)
         self.assertTrue(fase2.is_ativa)
+
+    def test_live_endpoint_returns_upcoming_matches_without_highlight_duplication(self):
+        fase = Fase.objects.create(
+            torneio=self.torneio,
+            regra=self.regra,
+            nome='Fase de Grupos',
+            tipo='GRUPO',
+            ordem=1,
+            is_ativa=True,
+        )
+        e1 = Equipe.objects.create(torneio=self.torneio, nome='T1')
+        e2 = Equipe.objects.create(torneio=self.torneio, nome='T2')
+        e3 = Equipe.objects.create(torneio=self.torneio, nome='T3')
+        e4 = Equipe.objects.create(torneio=self.torneio, nome='T4')
+
+        primeiro = Partida.objects.create(
+            fase=fase,
+            equipe_a=e1,
+            equipe_b=e2,
+            status='AGENDADA',
+            ordem_cronograma=1,
+        )
+        segundo = Partida.objects.create(
+            fase=fase,
+            equipe_a=e3,
+            equipe_b=e4,
+            status='AGENDADA',
+            ordem_cronograma=2,
+        )
+
+        url = reverse('public_live_data', kwargs={'slug': self.torneio.slug})
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+
+        self.assertEqual(data['highlight']['id'], primeiro.id)
+        self.assertEqual(len(data['upcoming_matches']), 1)
+        self.assertEqual(data['upcoming_matches'][0]['id'], segundo.id)
+
+    def test_dashboard_endpoint_returns_campeao_on_final_finished(self):
+        fase = Fase.objects.create(
+            torneio=self.torneio,
+            regra=self.regra,
+            nome='Final',
+            tipo='ELIMINATORIA',
+            ordem=3,
+            is_ativa=True,
+        )
+        e1 = Equipe.objects.create(torneio=self.torneio, nome='Tubarões')
+        e2 = Equipe.objects.create(torneio=self.torneio, nome='Águias')
+        Jogador.objects.create(equipe=e1, nome='Jogador 2')
+        Jogador.objects.create(equipe=e1, nome='Jogador 1')
+        Partida.objects.create(
+            fase=fase,
+            equipe_a=e1,
+            equipe_b=e2,
+            status='FINALIZADA',
+            vencedor=e1,
+            ordem_cronograma=1,
+        )
+
+        url = reverse('public_dashboard_data', kwargs={'slug': self.torneio.slug})
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['campeao']['nome'], 'Tubarões')
+        self.assertEqual(data['campeao']['jogadores'], ['Jogador 1', 'Jogador 2'])
+        self.assertEqual(data['podio']['campeao']['nome'], 'Tubarões')
+        self.assertEqual(data['podio']['campeao']['jogadores'], ['Jogador 1', 'Jogador 2'])
+        self.assertEqual(data['podio']['vice']['nome'], 'Águias')
+        self.assertEqual(data['podio']['vice']['jogadores'], [])
+        self.assertIsNone(data['podio']['terceiro'])
+
+    def test_dashboard_endpoint_returns_podio_with_third_place_when_available(self):
+        fase_terceiro = Fase.objects.create(
+            torneio=self.torneio,
+            regra=self.regra,
+            nome='3º Lugar',
+            tipo='ELIMINATORIA',
+            ordem=2,
+            is_ativa=False,
+        )
+        fase_final = Fase.objects.create(
+            torneio=self.torneio,
+            regra=self.regra,
+            nome='Final',
+            tipo='ELIMINATORIA',
+            ordem=3,
+            is_ativa=True,
+        )
+        e1 = Equipe.objects.create(torneio=self.torneio, nome='Lobos')
+        e2 = Equipe.objects.create(torneio=self.torneio, nome='Falcões')
+        e3 = Equipe.objects.create(torneio=self.torneio, nome='Leões')
+        e4 = Equipe.objects.create(torneio=self.torneio, nome='Panteras')
+        Jogador.objects.create(equipe=e1, nome='Atila')
+        Jogador.objects.create(equipe=e2, nome='Breno')
+        Jogador.objects.create(equipe=e4, nome='Caio')
+
+        Partida.objects.create(
+            fase=fase_final,
+            equipe_a=e1,
+            equipe_b=e2,
+            status='FINALIZADA',
+            vencedor=e2,
+            ordem_cronograma=1,
+        )
+        Partida.objects.create(
+            fase=fase_terceiro,
+            equipe_a=e3,
+            equipe_b=e4,
+            status='FINALIZADA',
+            vencedor=e4,
+            ordem_cronograma=2,
+        )
+
+        url = reverse('public_dashboard_data', kwargs={'slug': self.torneio.slug})
+        response = self.client.get(url)
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['podio']['campeao']['nome'], 'Falcões')
+        self.assertEqual(data['podio']['campeao']['jogadores'], ['Breno'])
+        self.assertEqual(data['podio']['vice']['nome'], 'Lobos')
+        self.assertEqual(data['podio']['vice']['jogadores'], ['Atila'])
+        self.assertEqual(data['podio']['terceiro']['nome'], 'Panteras')
+        self.assertEqual(data['podio']['terceiro']['jogadores'], ['Caio'])
 
     def test_public_endpoints_are_read_only(self):
         dashboard_url = reverse('public_dashboard_data', kwargs={'slug': self.torneio.slug})

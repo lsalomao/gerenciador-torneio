@@ -23,9 +23,29 @@ def home(request):
 
 def _serialize_live_payload(torneio):
     highlight = get_current_highlight(torneio)
+    upcoming_matches = get_upcoming_matches(
+        torneio,
+        exclude_partida_id=highlight.id if highlight and highlight.status == 'AGENDADA' else None,
+    )
+
+    payload = {
+        'torneio': torneio.nome,
+        'highlight': None,
+        'upcoming_matches': [
+            {
+                'id': partida.id,
+                'ordem_cronograma': partida.ordem_cronograma,
+                'grupo': partida.grupo.nome if partida.grupo else None,
+                'fase': partida.fase.nome,
+                'equipe_a': partida.equipe_a.nome,
+                'equipe_b': partida.equipe_b.nome,
+            }
+            for partida in upcoming_matches
+        ],
+    }
 
     if not highlight:
-        return {'torneio': torneio.nome, 'highlight': None}
+        return payload
 
     sets = [
         {
@@ -39,23 +59,21 @@ def _serialize_live_payload(torneio):
     sets_ganhos_a = sum(1 for s in highlight.sets.all() if s.pontos_a > s.pontos_b)
     sets_ganhos_b = sum(1 for s in highlight.sets.all() if s.pontos_b > s.pontos_a)
 
-    return {
-        'torneio': torneio.nome,
-        'highlight': {
-            'id': highlight.id,
-            'fase': highlight.fase.nome,
-            'status': highlight.status,
-            'ordem_cronograma': highlight.ordem_cronograma,
-            'grupo': highlight.grupo.nome if highlight.grupo else None,
-            'equipe_a': highlight.equipe_a.nome,
-            'equipe_b': highlight.equipe_b.nome,
-            'sets_ganhos_a': sets_ganhos_a,
-            'sets_ganhos_b': sets_ganhos_b,
-            'sets': sets,
-            'vencedor': highlight.vencedor.nome if highlight.vencedor else None,
-            'is_wo': highlight.is_wo,
-        },
+    payload['highlight'] = {
+        'id': highlight.id,
+        'fase': highlight.fase.nome,
+        'status': highlight.status,
+        'ordem_cronograma': highlight.ordem_cronograma,
+        'grupo': highlight.grupo.nome if highlight.grupo else None,
+        'equipe_a': highlight.equipe_a.nome,
+        'equipe_b': highlight.equipe_b.nome,
+        'sets_ganhos_a': sets_ganhos_a,
+        'sets_ganhos_b': sets_ganhos_b,
+        'sets': sets,
+        'vencedor': highlight.vencedor.nome if highlight.vencedor else None,
+        'is_wo': highlight.is_wo,
     }
+    return payload
 
 
 def public_torneio_tv(request, slug):
@@ -100,7 +118,7 @@ from .services.wo_service import aplicar_wo
 from .services.validation_service import validar_set
 from .services.ranking_service import rankear_grupo
 from .services.advancement_service import processar_finalizacao_partida
-from .services.public_data_service import get_dashboard_context, get_current_highlight
+from .services.public_data_service import get_dashboard_context, get_current_highlight, get_upcoming_matches
 
 
 def _configurar_formularios(form, fase):
@@ -156,6 +174,11 @@ def _handle_placar(partida, regra, action):
     pontos_a = set_atual.pontos_a if set_atual else 0
     pontos_b = set_atual.pontos_b if set_atual else 0
 
+    if set_atual:
+        valid_atual = validar_set(pontos_a, pontos_b, regra)
+        if valid_atual.get('success'):
+            return 'locked'
+
     if action == 'increment_a':
         pontos_a += 1
     elif action == 'decrement_a' and pontos_a > 0:
@@ -172,30 +195,15 @@ def _handle_placar(partida, regra, action):
             SetResult(partida=partida, numero_set=1, pontos_a=pontos_a, pontos_b=pontos_b)
         ])
 
-    valid = validar_set(pontos_a, pontos_b, regra)
-    if valid.get('success'):
-        if valid.get('winner') == 'A':
-            partida.vencedor = partida.equipe_a
-        elif valid.get('winner') == 'B':
-            partida.vencedor = partida.equipe_b
-        partida.status = 'FINALIZADA'
-        partida.save()
-
-        if partida.grupo:
-            try:
-                rankear_grupo(partida.grupo)
-            except Exception:
-                pass
-        try:
-            processar_finalizacao_partida(partida)
-        except Exception:
-            pass
-
-        return f'?finalizada=1'
-    else:
-        if partida.status == 'AGENDADA':
-            partida.status = 'AO_VIVO'
-            partida.save(update_fields=['status'])
+    campos_atualizados = []
+    if partida.status != 'AO_VIVO':
+        partida.status = 'AO_VIVO'
+        campos_atualizados.append('status')
+    if partida.vencedor_id:
+        partida.vencedor = None
+        campos_atualizados.append('vencedor')
+    if campos_atualizados:
+        partida.save(update_fields=campos_atualizados)
 
     return ''
 
@@ -740,13 +748,6 @@ def partida_create(request, fase_pk):
 @login_required
 def partida_edit(request, pk):
     partida = get_object_or_404(Partida, pk=pk, fase__torneio__owner=request.user)
-    is_finalizada = partida.status == 'FINALIZADA'
-    show_modal = request.GET.get('finalizada') == '1'
-
-    if is_finalizada and not show_modal:
-        messages.error(request, 'Partida finalizada não pode ser editada.')
-        return redirect('admin_fase_detail', pk=partida.fase.pk)
-
     regra = partida.fase.regra
 
     if request.method == 'POST':
@@ -758,6 +759,9 @@ def partida_edit(request, pk):
                 return redirect('admin_partida_edit', pk=partida.pk)
 
             suffix = _handle_placar(partida, regra, action)
+            if suffix == 'locked':
+                messages.info(request, 'Placar já atingiu a regra. Finalize o jogo ou volte o último ponto.')
+                return redirect('admin_partida_edit', pk=partida.pk)
             redirect_path = f'{request.path}{suffix}' if suffix else request.path
             return redirect(redirect_path)
 
@@ -771,7 +775,8 @@ def partida_edit(request, pk):
                 messages.error(request, 'Não foi possível finalizar o jogo. Verifique o placar.')
                 return redirect('admin_partida_edit', pk=partida.pk)
 
-            return redirect(f'{request.path}?finalizada=1')
+            messages.success(request, 'Partida finalizada com sucesso.')
+            return redirect('admin_partida_edit', pk=partida.pk)
 
         if action == 'voltar_ponto':
             set_atual = partida.sets.filter(numero_set=1).first()
@@ -779,20 +784,42 @@ def partida_edit(request, pk):
                 messages.error(request, 'Não há placar para reverter.')
                 return redirect('admin_partida_edit', pk=partida.pk)
 
-            if partida.vencedor == partida.equipe_a and set_atual.pontos_a > 0:
+            if set_atual.pontos_a <= 0 and set_atual.pontos_b <= 0:
+                messages.error(request, 'Não há ponto para remover.')
+                return redirect('admin_partida_edit', pk=partida.pk)
+
+            regra = partida.fase.regra
+            alvo = None
+            if regra:
+                valid = validar_set(set_atual.pontos_a, set_atual.pontos_b, regra)
+                if valid.get('success'):
+                    alvo = 'A' if valid.get('winner') == 'A' else 'B'
+
+            if alvo == 'A' and set_atual.pontos_a > 0:
                 set_atual.pontos_a -= 1
-            elif partida.vencedor == partida.equipe_b and set_atual.pontos_b > 0:
+            elif alvo == 'B' and set_atual.pontos_b > 0:
+                set_atual.pontos_b -= 1
+            elif set_atual.pontos_a >= set_atual.pontos_b and set_atual.pontos_a > 0:
+                set_atual.pontos_a -= 1
+            elif set_atual.pontos_b > 0:
                 set_atual.pontos_b -= 1
 
-            set_atual.save(update_fields=['pontos_a', 'pontos_b'])
-            partida.vencedor = None
-            partida.save(update_fields=['vencedor'])
+            SetResult.objects.filter(pk=set_atual.pk).update(
+                pontos_a=set_atual.pontos_a,
+                pontos_b=set_atual.pontos_b,
+            )
+
+            campos_partida = []
+            if partida.vencedor_id:
+                partida.vencedor = None
+                campos_partida.append('vencedor')
+            if partida.status == 'FINALIZADA':
+                partida.status = 'AO_VIVO'
+                campos_partida.append('status')
+            if campos_partida:
+                partida.save(update_fields=campos_partida)
 
             messages.info(request, 'Último ponto removido. Confirme o término quando desejar.')
-            return redirect('admin_partida_edit', pk=partida.pk)
-
-        if action == 'save':
-            messages.success(request, 'Placar salvo!')
             return redirect('admin_partida_edit', pk=partida.pk)
 
         # Formulário padrão (form/formset)
@@ -840,12 +867,10 @@ def partida_edit(request, pk):
     pontos_a = set_atual.pontos_a if set_atual else 0
     pontos_b = set_atual.pontos_b if set_atual else 0
 
-    partida_finalizada = None
-    if show_modal:
-        partida_finalizada = {
-            'vencedor_nome': partida.vencedor.nome if partida.vencedor else '',
-            'partida_nome': f'{partida.equipe_a.nome} vs {partida.equipe_b.nome}',
-        }
+    partida_finalizada = {
+        'vencedor_nome': partida.vencedor.nome if partida.vencedor else '',
+        'partida_nome': f'{partida.equipe_a.nome} vs {partida.equipe_b.nome}',
+    }
 
     return render(request, 'admin_area/partida_form.html', {
         'form': form,

@@ -4,6 +4,29 @@ from django.db import transaction
 from apps.core.models import Partida, Fase, Equipe
 
 
+def _fase_esta_concluida(fase: Fase) -> bool:
+    if not fase.partidas.exists():
+        return False
+    return not fase.partidas.exclude(status='FINALIZADA').exists()
+
+
+def _ativar_proxima_fase_disponivel(fase_atual: Fase) -> None:
+    if not _fase_esta_concluida(fase_atual):
+        return
+
+    fases_futuras = Fase.objects.filter(
+        torneio=fase_atual.torneio,
+        ordem__gt=fase_atual.ordem,
+    ).order_by('ordem')
+
+    for fase in fases_futuras:
+        if fase.partidas.exclude(status='FINALIZADA').exists():
+            if not fase.is_ativa:
+                fase.is_ativa = True
+                fase.save(update_fields=['is_ativa'])
+            return
+
+
 def _gerar_eliminatoria_automatica(fase_grupo: Fase) -> None:
     """Gera automaticamente a fase eliminatória quando a fase de grupos está 100% finalizada.
     
@@ -62,6 +85,7 @@ def processar_finalizacao_partida(partida: Partida) -> None:
     # Se é fase de grupos, tentar gerar eliminatória automaticamente
     if fase.tipo == 'GRUPO':
         _gerar_eliminatoria_automatica(fase)
+        _ativar_proxima_fase_disponivel(fase)
         return
     
     # Apenas continuar com lógica eliminatória se for ELIMINATORIA
@@ -120,6 +144,9 @@ def processar_finalizacao_partida(partida: Partida) -> None:
                 ordem_cronograma=ordem_final,
                 rodada=1,
             )
+            if not fase_final.is_ativa:
+                fase_final.is_ativa = True
+                fase_final.save(update_fields=['is_ativa'])
 
         if fase_terceiro and not fase_terceiro.partidas.exists():
             ordem_terceiro = (fase_terceiro.partidas.aggregate(dj_models.Max('ordem_cronograma'))['ordem_cronograma__max'] or 0) + 1
@@ -131,6 +158,7 @@ def processar_finalizacao_partida(partida: Partida) -> None:
                 rodada=1,
             )
 
+        _ativar_proxima_fase_disponivel(fase)
         return
 
     # criar próxima rodada dentro da mesma fase eliminatória
@@ -147,4 +175,5 @@ def processar_finalizacao_partida(partida: Partida) -> None:
             Partida.objects.create(fase=fase, equipe_a=a, equipe_b=b, ordem_cronograma=ordem, rodada=proxima)
         ordem += 1
 
+    _ativar_proxima_fase_disponivel(fase)
     return

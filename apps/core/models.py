@@ -122,10 +122,20 @@ class Equipe(models.Model):
 
 
 class Jogador(models.Model):
+    TAMANHO_CAMISA_CHOICES = [
+        ('P', 'P'),
+        ('M', 'M'),
+        ('G', 'G'),
+        ('GG', 'GG'),
+        ('3G', '3G'),
+    ]
+
     equipe = models.ForeignKey(Equipe, on_delete=models.CASCADE, related_name='jogadores')
     nome = models.CharField(max_length=100)
     apelido = models.CharField(max_length=50, blank=True)
     posicao = models.CharField(max_length=50, blank=True)
+    celular = models.CharField(max_length=20, blank=True)
+    tamanho_camisa = models.CharField(max_length=2, choices=TAMANHO_CAMISA_CHOICES, blank=True)
 
     class Meta:
         verbose_name = 'Jogador'

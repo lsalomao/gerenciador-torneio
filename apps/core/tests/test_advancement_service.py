@@ -110,10 +110,38 @@ class AdvancementServiceTest(TestCase):
         # Isso não deve lançar erro, apenas retornar silenciosamente
         processar_finalizacao_partida(self.p2)
 
+    def test_ativa_proxima_fase_quando_grupos_finalizam(self):
+        self.fase_grupo.is_ativa = True
+        self.fase_grupo.save(update_fields=['is_ativa'])
+
+        SetResult.objects.create(partida=self.p1, numero_set=1, pontos_a=21, pontos_b=10)
+        SetResult.objects.create(partida=self.p1, numero_set=2, pontos_a=21, pontos_b=12)
+        self.p1.vencedor = self.e1
+        self.p1.status = 'FINALIZADA'
+        self.p1.save(update_fields=['vencedor', 'status'])
+        processar_finalizacao_partida(self.p1)
+
+        self.fase_grupo.refresh_from_db()
+        self.fase_elim.refresh_from_db()
+        self.assertTrue(self.fase_grupo.is_ativa)
+        self.assertFalse(self.fase_elim.is_ativa)
+
+        SetResult.objects.create(partida=self.p2, numero_set=1, pontos_a=21, pontos_b=18)
+        SetResult.objects.create(partida=self.p2, numero_set=2, pontos_a=21, pontos_b=19)
+        self.p2.vencedor = self.e3
+        self.p2.status = 'FINALIZADA'
+        self.p2.save(update_fields=['vencedor', 'status'])
+        processar_finalizacao_partida(self.p2)
+
+        self.fase_grupo.refresh_from_db()
+        self.fase_elim.refresh_from_db()
+        self.assertFalse(self.fase_grupo.is_ativa)
+        self.assertTrue(self.fase_elim.is_ativa)
+
     def test_semifinal_gera_final_e_terceiro_lugar_em_fases_separadas(self):
         fase_semi = Fase.objects.create(
             torneio=self.t, regra=self.regra, nome='Semi-Final',
-            tipo='ELIMINATORIA', ordem=3
+            tipo='ELIMINATORIA', ordem=3, is_ativa=True
         )
         fase_final = Fase.objects.create(
             torneio=self.t, regra=self.regra, nome='Final',
@@ -136,6 +164,9 @@ class AdvancementServiceTest(TestCase):
         processar_finalizacao_partida(p1)
         processar_finalizacao_partida(p2)
 
+        fase_semi.refresh_from_db()
+        fase_final.refresh_from_db()
+
         self.assertEqual(fase_semi.partidas.count(), 2)
         self.assertEqual(fase_final.partidas.count(), 1)
         self.assertEqual(fase_terceiro.partidas.count(), 1)
@@ -149,3 +180,5 @@ class AdvancementServiceTest(TestCase):
         self.assertEqual(partida_terceiro.equipe_a, self.e2)
         self.assertEqual(partida_terceiro.equipe_b, self.e3)
         self.assertEqual(partida_terceiro.rodada, 1)
+        self.assertFalse(fase_semi.is_ativa)
+        self.assertTrue(fase_final.is_ativa)

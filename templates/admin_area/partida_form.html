@@ -2,29 +2,13 @@
 
 {% block title %}{{ title }} — Gerenciador de Torneio{% endblock %}
 
-{% block extra_head %}
-<style>
-.modal-backdrop {
-    background: rgba(0, 0, 0, 0.5);
-    transition: opacity 0.3s ease;
-}
-.modal-content {
-    animation: modalSlideIn 0.3s ease;
-}
-@keyframes modalSlideIn {
-    from { transform: translateY(-20px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-}
-</style>
-{% endblock %}
-
 {% block content %}
 <div class="max-w-2xl mx-auto px-2 sm:px-0">
     <a href="{% url 'admin_fase_detail' partida.fase.pk %}" class="inline-flex items-center text-sm text-blue-700 hover:text-blue-800 font-medium mb-2">
         ← voltar para fase de grupos
     </a>
     <p class="text-sm text-gray-500 mb-2">{{ partida.grupo.nome|default:"" }} · Rodada {{ partida.rodada }}</p>
-    <h1 class="text-3xl font-bold text-gray-900 text-center mb-5">{{ partida.equipe_a.nome }} vs {{ partida.equipe_b.nome }}</h1>
+    <h1 class="text-3xl font-bold text-gray-900 text-center mb-5">{{ partida.equipe_a.nome }} vs {{ partida.equipe_b.nome }} </h1>
 
     <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6">
         <div class="flex items-center justify-between mb-5">
@@ -81,52 +65,19 @@
             </div>
         </div>
 
-        <div class="mt-6 flex items-stretch gap-3">
-            <form method="post" class="flex-1">
+       
+        <div class="mt-4 bg-blue-50 rounded-xl border border-blue-200 p-4 text-center">
+            <p class="text-sm text-gray-600 mb-1">Vencedor da partida</p>
+            <p class="text-lg font-bold text-green-700">{{ partida_finalizada.vencedor_nome }}</p>
+        </div>
+         <div class="mt-6 flex flex-col gap-3">   
+            
+            {% if partida.status != 'FINALIZADA' %}         
+            <form method="post">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="finalizar">
                 <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-3 px-4 rounded-xl transition">Finalizar Jogo</button>
-            </form>
-            <form method="post">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="save">
-                <button type="submit" class="bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-5 rounded-xl transition">Salvar</button>
-            </form>
-        </div>
-    </div>
-</div>
-
-{% if partida_finalizada %}
-<div id="modal-finalizada" class="fixed inset-0 z-50 flex items-center justify-center modal-backdrop">
-    <div class="modal-content relative bg-white rounded-2xl shadow-xl border border-gray-200 p-8 mx-4 w-full max-w-md">
-        <button type="button" onclick="document.getElementById('modal-finalizada').remove()"
-                class="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition">
-            <svg class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-            </svg>
-        </button>
-
-        <div class="text-center">
-            <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-                <svg class="h-8 w-8 text-green-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
-                </svg>
-            </div>
-            <h2 class="text-2xl font-bold text-gray-800 mb-2">Partida Finalizada!</h2>
-            <p class="text-gray-500 text-sm mb-4">O jogo acabou com sucesso.</p>
-
-            <div class="bg-blue-50 rounded-xl border border-blue-200 p-4 mb-4 text-left">
-                <p class="text-sm text-gray-600 mb-1">Partida:</p>
-                <p class="text-base font-bold text-gray-800">{{ partida_finalizada.partida_nome }}</p>
-                <hr class="border-blue-200 my-3">
-                <p class="text-sm text-gray-600 mb-1">Vencedor:</p>
-                <p class="text-lg font-bold text-green-700">{{ partida_finalizada.vencedor_nome }}</p>
-            </div>
-
-            <p class="text-xs text-gray-400 mb-6">A partida foi marcada como FINALIZADA e os rankings/processos foram atualizados.</p>
-        </div>
-
-        <div class="flex flex-col gap-3">
+            </form>                        
             <form method="post">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="voltar_ponto">
@@ -134,14 +85,22 @@
                         class="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-3 px-4 rounded-xl transition">
                     ← Voltar último ponto
                 </button>
-            </form>
-            <a href="{% url 'admin_fase_detail' partida.fase.pk %}"
-               class="w-full text-center bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-4 rounded-xl transition">
-                Voltar para a lista de partidas
-            </a>
+            </form>            
+            {% endif %}
+
+            {% if partida.status == 'FINALIZADA' %}
+               <a href="{% url 'admin_fase_detail' partida.fase.pk %}" 
+                    class="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 hover:text-blue-800 transition-colors duration-200 mb-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        voltar
+                    </a>
+            {% endif %}
         </div>
+
     </div>
 </div>
-{% endif %}
 
 {% endblock %}
+
