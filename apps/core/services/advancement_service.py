@@ -4,6 +4,29 @@ from django.db import transaction
 from apps.core.models import Partida, Fase, Equipe
 
 
+def _fase_esta_concluida(fase: Fase) -> bool:
+    if not fase.partidas.exists():
+        return False
+    return not fase.partidas.exclude(status='FINALIZADA').exists()
+
+
+def _ativar_proxima_fase_disponivel(fase_atual: Fase) -> None:
+    if not _fase_esta_concluida(fase_atual):
+        return
+
+    fases_futuras = Fase.objects.filter(
+        torneio=fase_atual.torneio,
+        ordem__gt=fase_atual.ordem,
+    ).order_by('ordem')
+
+    for fase in fases_futuras:
+        if fase.partidas.exclude(status='FINALIZADA').exists():
+            if not fase.is_ativa:
+                fase.is_ativa = True
+                fase.save(update_fields=['is_ativa'])
+            return
+
+
 def _gerar_eliminatoria_automatica(fase_grupo: Fase) -> None:
     """Gera automaticamente a fase eliminatória quando a fase de grupos está 100% finalizada.
     
@@ -62,6 +85,7 @@ def processar_finalizacao_partida(partida: Partida) -> None:
     # Se é fase de grupos, tentar gerar eliminatória automaticamente
     if fase.tipo == 'GRUPO':
         _gerar_eliminatoria_automatica(fase)
+        _ativar_proxima_fase_disponivel(fase)
         return
     
     # Apenas continuar com lógica eliminatória se for ELIMINATORIA
@@ -92,27 +116,64 @@ def processar_finalizacao_partida(partida: Partida) -> None:
     if len(vencedores) <= 1:
         return
 
-    # criar próxima rodada: rodada_atual + 1
+    # caso de semifinal: criar FINAL e 3º LUGAR em fases seguintes (quando existirem)
+    if len(vencedores) == 2 and len(perdedores) >= 2:
+        fases_futuras = Fase.objects.filter(
+            torneio=fase.torneio,
+            tipo='ELIMINATORIA',
+            ordem__gt=fase.ordem,
+        ).order_by('ordem')
+
+        fase_final = fases_futuras.filter(nome__icontains='final').exclude(nome__icontains='semi').first()
+        fase_terceiro = fases_futuras.filter(
+            dj_models.Q(nome__icontains='3') | dj_models.Q(nome__icontains='terceiro')
+        ).first()
+
+        if not fase_final:
+            fase_final = fases_futuras.first()
+
+        if not fase_terceiro:
+            fase_terceiro = fases_futuras.exclude(pk=getattr(fase_final, 'pk', None)).first()
+
+        if fase_final and not fase_final.partidas.exists():
+            ordem_final = (fase_final.partidas.aggregate(dj_models.Max('ordem_cronograma'))['ordem_cronograma__max'] or 0) + 1
+            Partida.objects.create(
+                fase=fase_final,
+                equipe_a=vencedores[0],
+                equipe_b=vencedores[1],
+                ordem_cronograma=ordem_final,
+                rodada=1,
+            )
+            if not fase_final.is_ativa:
+                fase_final.is_ativa = True
+                fase_final.save(update_fields=['is_ativa'])
+
+        if fase_terceiro and not fase_terceiro.partidas.exists():
+            ordem_terceiro = (fase_terceiro.partidas.aggregate(dj_models.Max('ordem_cronograma'))['ordem_cronograma__max'] or 0) + 1
+            Partida.objects.create(
+                fase=fase_terceiro,
+                equipe_a=perdedores[0],
+                equipe_b=perdedores[1],
+                ordem_cronograma=ordem_terceiro,
+                rodada=1,
+            )
+
+        _ativar_proxima_fase_disponivel(fase)
+        return
+
+    # criar próxima rodada dentro da mesma fase eliminatória
     proxima = rodada_atual + 1
-    # determinar próximo ordem_cronograma base
     max_ordem = fase.partidas.aggregate(dj_models.Max('ordem_cronograma'))['ordem_cronograma__max'] or 0
     ordem = max_ordem + 1
 
-    # emparelhar vencedores: 0 vs 1, 2 vs 3, ... (mantendo a ordem)
     for i in range(0, len(vencedores), 2):
         a = vencedores[i]
         b = vencedores[i+1] if i+1 < len(vencedores) else None
         if not b:
-            # bye: criar partida com apenas um time (ou pular)
             Partida.objects.create(fase=fase, equipe_a=a, equipe_b=a, ordem_cronograma=ordem, rodada=proxima)
         else:
             Partida.objects.create(fase=fase, equipe_a=a, equipe_b=b, ordem_cronograma=ordem, rodada=proxima)
         ordem += 1
 
-    # Se a rodada atual gerou a final (ou seja, proxima terá 1 partida), e a rodada atual era semifinal,
-    # criar também partida de 3º lugar usando os perdedores das semifinais (assumindo perdedores[0] vs perdedores[1]).
-    if len(vencedores) == 2 and len(perdedores) >= 2:
-        # criar partida de 3º lugar
-        Partida.objects.create(fase=fase, equipe_a=perdedores[0], equipe_b=perdedores[1], ordem_cronograma=ordem, rodada=proxima+1)
-
+    _ativar_proxima_fase_disponivel(fase)
     return

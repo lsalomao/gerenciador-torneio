@@ -2,7 +2,10 @@ from django import forms
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.http import JsonResponse
+from django.views.decorators.http import require_GET
 from .services.bracket_service import gerar_eliminatoria
+from .services.torneio_setup_service import criar_fases_torneio
 from .models import (
     Torneio, RegraPontuacao, Equipe, Jogador,
     Fase, Grupo, Partida, SetResult
@@ -12,6 +15,97 @@ from .forms import (
     JogadorFormSet, FaseForm, GrupoForm,
     PartidaForm, SetResultFormSet
 )
+
+
+def home(request):
+    return render(request, 'home.html')
+
+
+def _serialize_live_payload(torneio):
+    highlight = get_current_highlight(torneio)
+    upcoming_matches = get_upcoming_matches(
+        torneio,
+        exclude_partida_id=highlight.id if highlight and highlight.status == 'AGENDADA' else None,
+    )
+
+    payload = {
+        'torneio': torneio.nome,
+        'highlight': None,
+        'upcoming_matches': [
+            {
+                'id': partida.id,
+                'ordem_cronograma': partida.ordem_cronograma,
+                'grupo': partida.grupo.nome if partida.grupo else None,
+                'fase': partida.fase.nome,
+                'equipe_a': partida.equipe_a.nome,
+                'equipe_b': partida.equipe_b.nome,
+            }
+            for partida in upcoming_matches
+        ],
+    }
+
+    if not highlight:
+        return payload
+
+    sets = [
+        {
+            'numero_set': s.numero_set,
+            'pontos_a': s.pontos_a,
+            'pontos_b': s.pontos_b,
+        }
+        for s in highlight.sets.all()
+    ]
+
+    sets_ganhos_a = sum(1 for s in highlight.sets.all() if s.pontos_a > s.pontos_b)
+    sets_ganhos_b = sum(1 for s in highlight.sets.all() if s.pontos_b > s.pontos_a)
+
+    payload['highlight'] = {
+        'id': highlight.id,
+        'fase': highlight.fase.nome,
+        'status': highlight.status,
+        'ordem_cronograma': highlight.ordem_cronograma,
+        'grupo': highlight.grupo.nome if highlight.grupo else None,
+        'equipe_a': highlight.equipe_a.nome,
+        'equipe_b': highlight.equipe_b.nome,
+        'sets_ganhos_a': sets_ganhos_a,
+        'sets_ganhos_b': sets_ganhos_b,
+        'sets': sets,
+        'vencedor': highlight.vencedor.nome if highlight.vencedor else None,
+        'is_wo': highlight.is_wo,
+    }
+    return payload
+
+
+def public_torneio_tv(request, slug):
+    torneio = get_object_or_404(Torneio, slug=slug)
+    initial_dashboard = get_dashboard_context(torneio)
+    initial_live = _serialize_live_payload(torneio)
+
+    return render(request, 'public/tv_dashboard.html', {
+        'torneio': torneio,
+        'polling_interval': torneio.polling_interval * 1000,
+        'live_url': torneio.live_url,
+        'initial_dashboard': initial_dashboard,
+        'initial_live': initial_live,
+        'dashboard_url': f'/api/v1/public/torneio/{torneio.slug}/dashboard/',
+        'live_data_url': f'/api/v1/public/torneio/{torneio.slug}/live/',
+    })
+
+
+@require_GET
+def public_dashboard_data(request, slug):
+    torneio = get_object_or_404(Torneio, slug=slug)
+    data = get_dashboard_context(torneio)
+    return JsonResponse(data)
+
+
+@require_GET
+def public_live_data(request, slug):
+    torneio = get_object_or_404(Torneio, slug=slug)
+    data = _serialize_live_payload(torneio)
+    return JsonResponse(data)
+
+
 from .services import (
     sortear_equipes_automatico,
     gerar_round_robin_fase,
@@ -21,6 +115,97 @@ from .services import (
 )
 from .services.match_service import iniciar_partida, adicionar_set
 from .services.wo_service import aplicar_wo
+from .services.validation_service import validar_set
+from .services.ranking_service import rankear_grupo
+from .services.advancement_service import processar_finalizacao_partida
+from .services.public_data_service import get_dashboard_context, get_current_highlight, get_upcoming_matches
+
+
+def _configurar_formularios(form, fase):
+    """Configura querysets e widgets dos formulários de partida."""
+    equipes = fase.torneio.equipes.all()
+    form.fields['equipe_a'].queryset = equipes
+    form.fields['equipe_b'].queryset = equipes
+    form.fields['grupo'].queryset = fase.grupos.all()
+    form.fields['vencedor'].queryset = equipes
+    form.fields['vencedor_wo'].queryset = equipes
+
+    if fase.tipo == 'ELIMINATORIA':
+        form.fields['grupo'].widget = forms.HiddenInput()
+        form.fields['grupo'].required = False
+
+    form.fields['fase'].widget = forms.HiddenInput()
+
+
+def _finalizar_partida(partida, regra):
+    """Finaliza partida atribuindo vencedor e atualizando rankings.
+    Retorna o nome do vencedor ou None se não houver vencedor."""
+    set_atual = partida.sets.filter(numero_set=1).first()
+    if not set_atual:
+        return None
+
+    valid = validar_set(set_atual.pontos_a, set_atual.pontos_b, regra)
+    if not valid.get('success'):
+        return None
+
+    if valid.get('winner') == 'A':
+        partida.vencedor = partida.equipe_a
+    else:
+        partida.vencedor = partida.equipe_b
+    partida.status = 'FINALIZADA'
+    partida.save()
+
+    if partida.grupo:
+        try:
+            rankear_grupo(partida.grupo)
+        except Exception:
+            pass
+    try:
+        processar_finalizacao_partida(partida)
+    except Exception:
+        pass
+
+    return partida.vencedor.nome if partida.vencedor else ''
+
+
+def _handle_placar(partida, regra, action):
+    """Processa ações de placar (+/-). Retorna redirect."""
+    set_atual = partida.sets.filter(numero_set=1).first()
+    pontos_a = set_atual.pontos_a if set_atual else 0
+    pontos_b = set_atual.pontos_b if set_atual else 0
+
+    if set_atual:
+        valid_atual = validar_set(pontos_a, pontos_b, regra)
+        if valid_atual.get('success'):
+            return 'locked'
+
+    if action == 'increment_a':
+        pontos_a += 1
+    elif action == 'decrement_a' and pontos_a > 0:
+        pontos_a -= 1
+    elif action == 'increment_b':
+        pontos_b += 1
+    elif action == 'decrement_b' and pontos_b > 0:
+        pontos_b -= 1
+
+    if set_atual:
+        SetResult.objects.filter(pk=set_atual.pk).update(pontos_a=pontos_a, pontos_b=pontos_b)
+    else:
+        SetResult.objects.bulk_create([
+            SetResult(partida=partida, numero_set=1, pontos_a=pontos_a, pontos_b=pontos_b)
+        ])
+
+    campos_atualizados = []
+    if partida.status != 'AO_VIVO':
+        partida.status = 'AO_VIVO'
+        campos_atualizados.append('status')
+    if partida.vencedor_id:
+        partida.vencedor = None
+        campos_atualizados.append('vencedor')
+    if campos_atualizados:
+        partida.save(update_fields=campos_atualizados)
+
+    return ''
 
 
 @login_required
@@ -49,7 +234,18 @@ def torneio_create(request):
             torneio = form.save(commit=False)
             torneio.owner = request.user
             torneio.save()
-            messages.success(request, f'Torneio "{torneio.nome}" criado com sucesso!')
+            
+            # Criar fases automaticamente
+            resultado = criar_fases_torneio(torneio)
+            
+            if resultado['sucesso']:
+                messages.success(request, f'Torneio "{torneio.nome}" criado com sucesso! {len(resultado["fases_criadas"])} fases foram criadas automaticamente.')
+                
+                if 'aviso' in resultado:
+                    messages.warning(request, resultado['aviso'])
+            else:
+                messages.error(request, f"Erro ao criar fases: {resultado.get('erro', 'Erro desconhecido')}")
+            
             return redirect('admin_torneio_detail', pk=torneio.pk)
     else:
         form = TorneioForm()
@@ -192,7 +388,7 @@ def regra_delete(request, pk):
 def equipe_create(request, torneio_pk):
     torneio = get_object_or_404(Torneio, pk=torneio_pk, owner=request.user)
     if request.method == 'POST':
-        form = EquipeForm(request.POST)
+        form = EquipeForm(request.POST, torneio=torneio)
         formset = JogadorFormSet(request.POST)
         if form.is_valid():
             equipe = form.save(commit=False)
@@ -204,7 +400,7 @@ def equipe_create(request, torneio_pk):
             messages.success(request, f'Equipe "{equipe.nome}" criada!')
             return redirect('admin_torneio_detail', pk=torneio.pk)
     else:
-        form = EquipeForm()
+        form = EquipeForm(torneio=torneio)
         formset = JogadorFormSet()
     return render(request, 'admin_area/equipe_form.html', {
         'form': form, 'formset': formset, 'torneio': torneio, 'title': 'Nova Equipe'
@@ -215,7 +411,7 @@ def equipe_create(request, torneio_pk):
 def equipe_edit(request, pk):
     equipe = get_object_or_404(Equipe, pk=pk, torneio__owner=request.user)
     if request.method == 'POST':
-        form = EquipeForm(request.POST, instance=equipe)
+        form = EquipeForm(request.POST, instance=equipe, torneio=equipe.torneio)
         formset = JogadorFormSet(request.POST, instance=equipe)
         if form.is_valid() and formset.is_valid():
             form.save()
@@ -223,7 +419,7 @@ def equipe_edit(request, pk):
             messages.success(request, 'Equipe atualizada!')
             return redirect('admin_torneio_detail', pk=equipe.torneio.pk)
     else:
-        form = EquipeForm(instance=equipe)
+        form = EquipeForm(instance=equipe, torneio=equipe.torneio)
         formset = JogadorFormSet(instance=equipe)
     return render(request, 'admin_area/equipe_form.html', {
         'form': form, 'formset': formset, 'torneio': equipe.torneio, 'title': f'Editar: {equipe.nome}'
@@ -281,14 +477,46 @@ def fase_edit(request, pk):
 def fase_detail(request, pk):
     fase = get_object_or_404(Fase, pk=pk, torneio__owner=request.user)
     grupos = fase.grupos.prefetch_related('equipes').all()
-    partidas = fase.partidas.select_related('equipe_a', 'equipe_b', 'grupo').all()
-    
+    partidas = fase.partidas.select_related('equipe_a', 'equipe_b', 'grupo', 'vencedor', 'vencedor_wo').prefetch_related('sets').order_by('grupo__nome', 'ordem_cronograma', 'id')
+
+    for partida in partidas:
+        sets_lancados = list(partida.sets.all())
+        set_unico = sets_lancados[0] if sets_lancados else None
+        partida.placar_resumo = f"{set_unico.pontos_a} x {set_unico.pontos_b}" if set_unico else ('W.O.' if partida.is_wo else '—')
+        partida.vencedor_nome = partida.vencedor.nome if partida.vencedor else None
+
+    partidas_por_grupo = []
+    if fase.tipo == 'GRUPO':
+        partidas_por_grupo_id = {}
+        for partida in partidas:
+            partidas_por_grupo_id.setdefault(partida.grupo_id, []).append(partida)
+
+        for grupo in grupos:
+            partidas_do_grupo = partidas_por_grupo_id.get(grupo.id, [])
+            rodadas_map = {}
+            for partida in partidas_do_grupo:
+                numero_rodada = partida.rodada or 1
+                rodadas_map.setdefault(numero_rodada, []).append(partida)
+
+            rodadas = []
+            for numero in sorted(rodadas_map.keys()):
+                rodadas.append({
+                    'numero': numero,
+                    'partidas': rodadas_map[numero],
+                })
+
+            partidas_por_grupo.append({
+                'grupo': grupo,
+                'rodadas': rodadas,
+            })
+
     stats = obter_estatisticas_fase(fase.id)
-    
+
     return render(request, 'admin_area/fase_detail.html', {
         'fase': fase,
         'grupos': grupos,
         'partidas': partidas,
+        'partidas_por_grupo': partidas_por_grupo,
         'stats': stats,
     })
 
@@ -338,20 +566,26 @@ def fase_sortear_equipes(request, pk):
     
     if request.method == 'POST':
         resultado = sortear_equipes_automatico(fase.id)
-        
+
         if resultado['success']:
             messages.success(request, resultado['message'])
+
+            resultado_partidas = gerar_round_robin_fase(fase.id)
+            if resultado_partidas['success']:
+                messages.success(request, resultado_partidas['message'])
+            else:
+                messages.warning(request, f"Equipes sorteadas com sucesso, mas houve falha ao gerar partidas: {resultado_partidas['message']}")
+                for erro in resultado_partidas.get('erros', []):
+                    messages.warning(request, erro)
         else:
             messages.error(request, resultado['message'])
-        
+
         return redirect('admin_fase_detail', pk=fase.pk)
     
-    grupos = fase.grupos.prefetch_related('equipes').all()
     equipes_disponiveis = fase.torneio.equipes.exclude(grupos__fase=fase)
-    
+
     return render(request, 'admin_area/fase_sortear_confirm.html', {
         'fase': fase,
-        'grupos': grupos,
         'equipes_disponiveis': equipes_disponiveis,
     })
 
@@ -514,50 +748,110 @@ def partida_create(request, fase_pk):
 @login_required
 def partida_edit(request, pk):
     partida = get_object_or_404(Partida, pk=pk, fase__torneio__owner=request.user)
-    if partida.status == 'FINALIZADA':
-        messages.error(request, 'Partida finalizada não pode ser editada.')
-        return redirect('admin_fase_detail', pk=partida.fase.pk)
-    equipes_torneio = partida.fase.torneio.equipes.all()
+    regra = partida.fase.regra
+
     if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action in ['increment_a', 'decrement_a', 'increment_b', 'decrement_b']:
+            if not regra:
+                messages.error(request, 'Defina uma regra de pontuação na fase antes de lançar placar.')
+                return redirect('admin_partida_edit', pk=partida.pk)
+
+            suffix = _handle_placar(partida, regra, action)
+            if suffix == 'locked':
+                messages.info(request, 'Placar já atingiu a regra. Finalize o jogo ou volte o último ponto.')
+                return redirect('admin_partida_edit', pk=partida.pk)
+            redirect_path = f'{request.path}{suffix}' if suffix else request.path
+            return redirect(redirect_path)
+
+        if action == 'finalizar':
+            if not regra:
+                messages.error(request, 'Defina uma regra de pontuação na fase antes de finalizar o jogo.')
+                return redirect('admin_partida_edit', pk=partida.pk)
+
+            vencedor = _finalizar_partida(partida, regra)
+            if vencedor is None:
+                messages.error(request, 'Não foi possível finalizar o jogo. Verifique o placar.')
+                return redirect('admin_partida_edit', pk=partida.pk)
+
+            messages.success(request, 'Partida finalizada com sucesso.')
+            return redirect('admin_partida_edit', pk=partida.pk)
+
+        if action == 'voltar_ponto':
+            set_atual = partida.sets.filter(numero_set=1).first()
+            if not set_atual:
+                messages.error(request, 'Não há placar para reverter.')
+                return redirect('admin_partida_edit', pk=partida.pk)
+
+            if set_atual.pontos_a <= 0 and set_atual.pontos_b <= 0:
+                messages.error(request, 'Não há ponto para remover.')
+                return redirect('admin_partida_edit', pk=partida.pk)
+
+            regra = partida.fase.regra
+            alvo = None
+            if regra:
+                valid = validar_set(set_atual.pontos_a, set_atual.pontos_b, regra)
+                if valid.get('success'):
+                    alvo = 'A' if valid.get('winner') == 'A' else 'B'
+
+            if alvo == 'A' and set_atual.pontos_a > 0:
+                set_atual.pontos_a -= 1
+            elif alvo == 'B' and set_atual.pontos_b > 0:
+                set_atual.pontos_b -= 1
+            elif set_atual.pontos_a >= set_atual.pontos_b and set_atual.pontos_a > 0:
+                set_atual.pontos_a -= 1
+            elif set_atual.pontos_b > 0:
+                set_atual.pontos_b -= 1
+
+            SetResult.objects.filter(pk=set_atual.pk).update(
+                pontos_a=set_atual.pontos_a,
+                pontos_b=set_atual.pontos_b,
+            )
+
+            campos_partida = []
+            if partida.vencedor_id:
+                partida.vencedor = None
+                campos_partida.append('vencedor')
+            if partida.status == 'FINALIZADA':
+                partida.status = 'AO_VIVO'
+                campos_partida.append('status')
+            if campos_partida:
+                partida.save(update_fields=campos_partida)
+
+            messages.info(request, 'Último ponto removido. Confirme o término quando desejar.')
+            return redirect('admin_partida_edit', pk=partida.pk)
+
+        # Formulário padrão (form/formset)
         form = PartidaForm(request.POST, instance=partida)
+        _configurar_formularios(form, partida.fase)
+
+        if partida.status == 'FINALIZADA':
+            form.is_valid()
+            messages.info(request, 'Partida finalizada. Use "Voltar último ponto" para reverter.')
+            return redirect('admin_fase_detail', pk=partida.fase.pk)
+
         formset = SetResultFormSet(request.POST, instance=partida)
-        form.fields['equipe_a'].queryset = equipes_torneio
-        form.fields['equipe_b'].queryset = equipes_torneio
-        form.fields['grupo'].queryset = partida.fase.grupos.all()
-        form.fields['vencedor'].queryset = equipes_torneio
-        form.fields['vencedor_wo'].queryset = equipes_torneio
         if form.is_valid() and formset.is_valid():
-            # Salva campos da partida
             form.save()
 
-            # Processar sets um-a-um usando match_service para garantir validações e regras
             for set_form in formset:
                 cd = set_form.cleaned_data
                 if not cd:
                     continue
-                # Remoção de set
                 if cd.get('DELETE') and set_form.instance.pk:
-                    # permitir remoção apenas se partida não finalizada
-                    if partida.status == 'FINALIZADA':
-                        messages.error(request, 'Não é possível remover sets de partida finalizada.')
-                        return redirect('admin_partida_edit', pk=partida.pk)
                     set_form.instance.delete()
                     continue
 
-                numero = cd.get('numero_set')
-                pontos_a = cd.get('pontos_a')
-                pontos_b = cd.get('pontos_b')
-
-                # Se já existe, atualizar via model (permitido apenas se não finalizada)
                 if set_form.instance.pk:
-                    if partida.status == 'FINALIZADA':
-                        messages.error(request, 'Não é possível editar sets de partida finalizada.')
-                        return redirect('admin_partida_edit', pk=partida.pk)
-                    set_obj = set_form.save(commit=False)
-                    set_obj.save()
+                    set_form.save()
                 else:
-                    # Adicionar novo set usando serviço (irá validar e finalizar partida quando aplicável)
-                    resultado = adicionar_set(partida, numero, pontos_a, pontos_b)
+                    resultado = adicionar_set(
+                        partida,
+                        cd.get('numero_set'),
+                        cd.get('pontos_a'),
+                        cd.get('pontos_b'),
+                    )
                     if not resultado['success']:
                         messages.error(request, resultado['message'])
                         return redirect('admin_partida_edit', pk=partida.pk)
@@ -567,21 +861,27 @@ def partida_edit(request, pk):
     else:
         form = PartidaForm(instance=partida)
         formset = SetResultFormSet(instance=partida)
-        form.fields['equipe_a'].queryset = equipes_torneio
-        form.fields['equipe_b'].queryset = equipes_torneio
-        form.fields['grupo'].queryset = partida.fase.grupos.all()
-        form.fields['vencedor'].queryset = equipes_torneio
-        form.fields['vencedor_wo'].queryset = equipes_torneio
-    
-    # Ocultar grupo para fases eliminatórias
-    if partida.fase.tipo == 'ELIMINATORIA':
-        form.fields['grupo'].widget = forms.HiddenInput()
-        form.fields['grupo'].required = False
-    
-    form.fields['fase'].widget = forms.HiddenInput()
+        _configurar_formularios(form, partida.fase)
+
+    set_atual = partida.sets.filter(numero_set=1).first()
+    pontos_a = set_atual.pontos_a if set_atual else 0
+    pontos_b = set_atual.pontos_b if set_atual else 0
+
+    partida_finalizada = {
+        'vencedor_nome': partida.vencedor.nome if partida.vencedor else '',
+        'partida_nome': f'{partida.equipe_a.nome} vs {partida.equipe_b.nome}',
+    }
+
     return render(request, 'admin_area/partida_form.html', {
-        'form': form, 'formset': formset, 'partida': partida,
-        'title': f'Editar: {partida}', 'fase': partida.fase
+        'form': form,
+        'formset': formset,
+        'partida': partida,
+        'title': f'Editar: {partida}',
+        'fase': partida.fase,
+        'set_atual': set_atual,
+        'pontos_a': pontos_a,
+        'pontos_b': pontos_b,
+        'partida_finalizada': partida_finalizada,
     })
 
 

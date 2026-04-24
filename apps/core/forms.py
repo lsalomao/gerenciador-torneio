@@ -52,16 +52,51 @@ class TailwindCheckbox(forms.CheckboxInput):
 class TorneioForm(forms.ModelForm):
     class Meta:
         model = Torneio
-        fields = ['nome', 'modalidade', 'local', 'data_inicio', 'hora_inicio', 'jogadores_por_equipe', 'status']
+        fields = [
+            'nome', 'modalidade', 'local', 'data_inicio', 'hora_inicio',
+            'slug', 'polling_interval', 'live_url',
+            'jogadores_por_equipe', 'quantidade_times', 'formato_torneio',
+            'times_por_grupo', 'status'
+        ]
         widgets = {
             'nome': TailwindInput(),
             'modalidade': TailwindInput(),
             'local': TailwindInput(),
             'data_inicio': TailwindDateInput(),
             'hora_inicio': TailwindTimeInput(),
+            'slug': TailwindInput(),
+            'polling_interval': TailwindNumberInput(),
+            'live_url': TailwindInput(),
             'jogadores_por_equipe': TailwindNumberInput(),
+            'quantidade_times': TailwindSelect(),
+            'formato_torneio': TailwindSelect(),
+            'times_por_grupo': TailwindSelect(),
             'status': TailwindSelect(),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Tornar times_por_grupo não obrigatório por padrão
+        self.fields['times_por_grupo'].required = False
+        # Adicionar classes customizadas e data attributes
+        self.fields['quantidade_times'].required = True
+        self.fields['formato_torneio'].required = True
+
+        # Add data attribute para JavaScript
+        self.fields['quantidade_times'].widget.attrs['data-field'] = 'quantidade_times'
+        self.fields['formato_torneio'].widget.attrs['data-field'] = 'formato_torneio'
+        self.fields['times_por_grupo'].widget.attrs['data-field'] = 'times_por_grupo'
+
+    def clean(self):
+        cleaned_data = super().clean()
+        formato = cleaned_data.get('formato_torneio')
+        times_por_grupo = cleaned_data.get('times_por_grupo')
+
+        # Se formato é grupos_e_eliminatoria, times_por_grupo deve estar preenchido
+        if formato == 'grupos_e_eliminatoria' and not times_por_grupo:
+            self.add_error('times_por_grupo', 'Este campo é obrigatório para formato "Grupos + Eliminatória".')
+
+        return cleaned_data
 
 
 class RegraPontuacaoForm(forms.ModelForm):
@@ -85,15 +120,30 @@ class EquipeForm(forms.ModelForm):
             'nome': TailwindInput(),
         }
 
+    def __init__(self, *args, **kwargs):
+        self.torneio = kwargs.pop('torneio', None)
+        super().__init__(*args, **kwargs)
+
+    def clean_nome(self):
+        nome = (self.cleaned_data.get('nome') or '').strip()
+        torneio = self.torneio or getattr(self.instance, 'torneio', None)
+
+        if torneio and Equipe.objects.filter(torneio=torneio, nome__iexact=nome).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError('Já existe uma equipe com este nome neste torneio.')
+
+        return nome
+
 
 class JogadorForm(forms.ModelForm):
     class Meta:
         model = Jogador
-        fields = ['nome', 'apelido', 'posicao']
+        fields = ['nome', 'apelido', 'posicao', 'celular', 'tamanho_camisa']
         widgets = {
             'nome': TailwindInput(),
             'apelido': TailwindInput(),
             'posicao': TailwindInput(),
+            'celular': TailwindInput(),
+            'tamanho_camisa': TailwindSelect(),
         }
 
 
@@ -108,14 +158,31 @@ JogadorFormSet = forms.inlineformset_factory(
 class FaseForm(forms.ModelForm):
     class Meta:
         model = Fase
-        fields = ['nome', 'tipo', 'regra', 'ordem', 'equipes_avancam']
+        fields = ['nome', 'tipo', 'regra', 'ordem', 'equipes_avancam', 'is_ativa']
         widgets = {
             'nome': TailwindInput(),
             'tipo': TailwindSelect(),
             'regra': TailwindSelect(),
             'ordem': TailwindNumberInput(),
             'equipes_avancam': TailwindNumberInput(),
+            'is_ativa': TailwindCheckbox(),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Tornar "equipes_avancam" não obrigatório já que será opcional para ELIMINATORIA
+        self.fields['equipes_avancam'].required = False
+
+    def clean(self):
+        cleaned_data = super().clean()
+        tipo = cleaned_data.get('tipo')
+        equipes_avancam = cleaned_data.get('equipes_avancam')
+
+        # Validar: equipes_avancam é obrigatório apenas para GRUPO
+        if tipo == 'GRUPO' and not equipes_avancam:
+            self.add_error('equipes_avancam', 'Este campo é obrigatório para fases do tipo GRUPO.')
+
+        return cleaned_data
 
 
 class GrupoForm(forms.ModelForm):

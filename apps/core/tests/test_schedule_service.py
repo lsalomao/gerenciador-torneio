@@ -94,6 +94,21 @@ class ScheduleServiceTest(TestCase):
                 "Encontrado jogo de equipe contra ela mesma"
             )
     
+    def test_round_robin_sem_repeticao_na_mesma_rodada(self):
+        gerar_round_robin(self.grupo_a.id)
+
+        partidas = Partida.objects.filter(grupo=self.grupo_a)
+        rodadas = sorted(set(partidas.values_list('rodada', flat=True)))
+
+        self.assertEqual(rodadas, [1, 2, 3])
+
+        for rodada in rodadas:
+            ids_equipes = []
+            for partida in partidas.filter(rodada=rodada):
+                ids_equipes.extend([partida.equipe_a_id, partida.equipe_b_id])
+
+            self.assertEqual(len(ids_equipes), len(set(ids_equipes)))
+
     def test_partidas_nascem_agendadas(self):
         gerar_round_robin(self.grupo_a.id)
         

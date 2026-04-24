@@ -9,7 +9,7 @@
     </div>
 
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <form method="post" class="space-y-4">
+        <form method="post" class="space-y-4" id="genericForm">
             {% csrf_token %}
             {% for field in form %}
                 {% if field.is_hidden %}
@@ -17,8 +17,9 @@
                 {% elif field.name == 'grupo' and fase and fase.tipo == 'ELIMINATORIA' %}
                     <!-- Campo grupo oculto para fases eliminatórias -->
                     {{ field }}
+                {% elif field.name == 'is_ativa' %}
                 {% else %}
-                <div>
+                <div id="field-{{ field.name }}-wrapper">
                     <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
                         {{ field.label }}
                         {% if field.field.required %}<span class="text-red-500">*</span>{% endif %}
@@ -62,4 +63,43 @@
         </form>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tipoField = document.getElementById('id_tipo');
+    const equipesAvancamWrapper = document.getElementById('field-equipes_avancam-wrapper');
+    const equipesAvancamInput = document.getElementById('id_equipes_avancam');
+
+    // Função para controlar a visibilidade do campo "equipes_avancam"
+    function toggleEquipesAvancamField() {
+        if (!tipoField || !equipesAvancamWrapper) return;
+
+        const tipo = tipoField.value;
+        
+        if (tipo === 'ELIMINATORIA') {
+            // Ocultar o campo para ELIMINATORIA
+            equipesAvancamWrapper.style.display = 'none';
+            // Garantir que o input não seja requerido quando oculto
+            if (equipesAvancamInput) {
+                equipesAvancamInput.removeAttribute('required');
+            }
+        } else if (tipo === 'GRUPO') {
+            // Mostrar o campo para GRUPO
+            equipesAvancamWrapper.style.display = 'block';
+            // Marcar como requerido quando visível
+            if (equipesAvancamInput) {
+                equipesAvancamInput.setAttribute('required', 'required');
+            }
+        }
+    }
+
+    // Aplicar estado correto ao carregar a página
+    toggleEquipesAvancamField();
+
+    // Monitorar mudanças no campo "tipo"
+    if (tipoField) {
+        tipoField.addEventListener('change', toggleEquipesAvancamField);
+    }
+});
+</script>
 {% endblock %}

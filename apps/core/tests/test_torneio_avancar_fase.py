@@ -2,6 +2,7 @@ from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from apps.core.models import Torneio, RegraPontuacao, Fase, Equipe, Grupo, Partida, SetResult
+from apps.core.services.torneio_setup_service import criar_fases_torneio
 
 User = get_user_model()
 
@@ -168,3 +169,32 @@ class TorneioAvancaFaseTest(TestCase):
         
         # Deve redirecionar com mensagem de erro
         self.assertEqual(response.status_code, 302)
+
+
+class TorneioSetupFaseAtivaTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username='setupuser',
+            email='setup@test.com',
+            password='testpass'
+        )
+        self.torneio = Torneio.objects.create(
+            owner=self.user,
+            nome='Setup Tournament',
+            modalidade='Vôlei',
+            local='Quadra B',
+            data_inicio='2026-05-01',
+            hora_inicio='10:00',
+            quantidade_times=8,
+            formato_torneio='grupos_e_eliminatoria'
+        )
+
+    def test_criar_fases_torneio_define_primeira_fase_como_ativa(self):
+        resultado = criar_fases_torneio(self.torneio)
+
+        self.assertTrue(resultado['sucesso'])
+
+        fases = list(self.torneio.fases.order_by('ordem'))
+        self.assertGreater(len(fases), 0)
+        self.assertTrue(fases[0].is_ativa)
+        self.assertFalse(any(fase.is_ativa for fase in fases[1:]))

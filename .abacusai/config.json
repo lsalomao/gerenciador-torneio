@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python manage.py test *)",
+      "Bash(python manage.py check *)",
+      "Bash(python manage.py makemigrations *)",
+      "Bash(python manage.py test apps.core.tests.test_public_api apps.core.tests.test_ranking_service apps.core.tests.test_torneio_…)",
+      "Bash(powershell *)"
+    ]
+  }
+}

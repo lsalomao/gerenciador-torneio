@@ -12,6 +12,22 @@ class Torneio(models.Model):
         ('ENCERRADO', 'Encerrado'),
     ]
 
+    QUANTIDADE_TIMES_CHOICES = [
+        (4, '4 times'),
+        (8, '8 times'),
+        (16, '16 times'),
+        (32, '32 times'),
+    ]
+
+    FORMATO_CHOICES = [
+        ('grupos_e_eliminatoria', 'Grupos + Eliminatória'),
+        ('so_eliminatoria', 'Só Eliminatória'),
+    ]
+
+    TIMES_POR_GRUPO_CHOICES = [
+        (4, '4 times por grupo'),
+    ]
+
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -23,8 +39,28 @@ class Torneio(models.Model):
     data_inicio = models.DateField()
     hora_inicio = models.TimeField()
     slug = models.SlugField(unique=True, blank=True, max_length=220)
+    polling_interval = models.IntegerField(default=10)
+    live_url = models.URLField(blank=True, null=True)
     jogadores_por_equipe = models.PositiveIntegerField(default=2)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='CRIACAO')
+    quantidade_times = models.PositiveIntegerField(
+        choices=QUANTIDADE_TIMES_CHOICES,
+        null=True,
+        blank=True,
+        help_text="Quantidade total de times no torneio"
+    )
+    formato_torneio = models.CharField(
+        max_length=30,
+        choices=FORMATO_CHOICES,
+        null=True,
+        blank=True,
+        help_text="Formato de disputa do torneio"
+    )
+    times_por_grupo = models.PositiveIntegerField(
+        choices=TIMES_POR_GRUPO_CHOICES,
+        default=4,
+        help_text="Quantidade de times por grupo (apenas para grupos_e_eliminatoria)"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -86,10 +122,20 @@ class Equipe(models.Model):
 
 
 class Jogador(models.Model):
+    TAMANHO_CAMISA_CHOICES = [
+        ('P', 'P'),
+        ('M', 'M'),
+        ('G', 'G'),
+        ('GG', 'GG'),
+        ('3G', '3G'),
+    ]
+
     equipe = models.ForeignKey(Equipe, on_delete=models.CASCADE, related_name='jogadores')
     nome = models.CharField(max_length=100)
     apelido = models.CharField(max_length=50, blank=True)
     posicao = models.CharField(max_length=50, blank=True)
+    celular = models.CharField(max_length=20, blank=True)
+    tamanho_camisa = models.CharField(max_length=2, choices=TAMANHO_CAMISA_CHOICES, blank=True)
 
     class Meta:
         verbose_name = 'Jogador'
@@ -109,6 +155,8 @@ class Fase(models.Model):
     regra = models.ForeignKey(
         RegraPontuacao,
         on_delete=models.PROTECT,
+        null=True,
+        blank=True,
         help_text="Regra de pontuação aplicada a todas as partidas desta fase."
     )
     nome = models.CharField(max_length=100, help_text="Ex: Fase de Grupos, Quartas de Final, Final")
@@ -118,11 +166,17 @@ class Fase(models.Model):
         default=2,
         help_text="Quantas equipes de cada grupo avançam para a próxima fase."
     )
+    is_ativa = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = 'Fase'
         verbose_name_plural = 'Fases'
         ordering = ['ordem']
+
+    def save(self, *args, **kwargs):
+        if self.is_ativa:
+            Fase.objects.filter(torneio=self.torneio, is_ativa=True).exclude(pk=self.pk).update(is_ativa=False)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.nome} — {self.torneio.nome}"

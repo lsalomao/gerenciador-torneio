@@ -1,23 +1,38 @@
 import random
-from typing import Dict, List, Tuple
+import string
+from typing import Dict, Tuple
 from django.db import transaction
-from django.db.models import Count
 
 from apps.core.models import Fase, Grupo, Equipe
+
+
+def _nome_grupo_por_indice(indice: int) -> str:
+    letras = string.ascii_uppercase
+    resultado = ""
+    numero = indice
+
+    while True:
+        numero, resto = divmod(numero, 26)
+        resultado = letras[resto] + resultado
+        if numero == 0:
+            break
+        numero -= 1
+
+    return f"Grupo {resultado}"
 
 
 def sortear_equipes_automatico(fase_id: int) -> Dict:
     """
     Sorteia equipes automaticamente entre os grupos de uma fase.
-    
+
     Regras:
     - Distribuição balanceada (diferença máxima de 1 equipe entre grupos)
     - Sem duplicidade (uma equipe não pode estar em dois grupos)
     - Apenas para fases tipo GRUPO
-    
+
     Args:
         fase_id: ID da fase
-        
+
     Returns:
         Dict com resultado da operação:
         {
@@ -36,7 +51,7 @@ def sortear_equipes_automatico(fase_id: int) -> Dict:
             "equipes_distribuidas": 0,
             "message": "Fase não encontrada"
         }
-    
+
     if fase.tipo != 'GRUPO':
         return {
             "success": False,
@@ -44,22 +59,58 @@ def sortear_equipes_automatico(fase_id: int) -> Dict:
             "equipes_distribuidas": 0,
             "message": "Sorteio só é permitido em fases do tipo GRUPO"
         }
-    
-    grupos = list(fase.grupos.all())
-    
+
+    if fase.partidas.filter(status='FINALIZADA').exists():
+        return {
+            "success": False,
+            "grupos_preenchidos": 0,
+            "equipes_distribuidas": 0,
+            "message": "Não é possível sortear — há partidas finalizadas nesta fase"
+        }
+
+    if fase.partidas.exists():
+        return {
+            "success": False,
+            "grupos_preenchidos": 0,
+            "equipes_distribuidas": 0,
+            "message": "Já existem partidas geradas nesta fase. Use \"Resetar Fase\" antes de sortear novamente"
+        }
+
+    quantidade_configurada = fase.torneio.quantidade_times or 0
+    total_equipes_cadastradas = fase.torneio.equipes.count()
+
+    if quantidade_configurada and total_equipes_cadastradas < quantidade_configurada:
+        faltam = quantidade_configurada - total_equipes_cadastradas
+        return {
+            "success": False,
+            "grupos_preenchidos": 0,
+            "equipes_distribuidas": 0,
+            "message": f"Cadastre todas as {quantidade_configurada} equipes antes de sortear (faltam {faltam})"
+        }
+
+    if quantidade_configurada and total_equipes_cadastradas > quantidade_configurada:
+        return {
+            "success": False,
+            "grupos_preenchidos": 0,
+            "equipes_distribuidas": 0,
+            "message": "O torneio tem mais equipes cadastradas do que o configurado"
+        }
+
+    grupos = list(fase.grupos.order_by('id'))
+
     if not grupos:
         return {
             "success": False,
             "grupos_preenchidos": 0,
             "equipes_distribuidas": 0,
-            "message": "Nenhum grupo criado para esta fase"
+            "message": "Nenhum grupo cadastrado para esta fase"
         }
-    
+
     equipes_disponiveis = list(
         Equipe.objects.filter(torneio=fase.torneio)
         .exclude(grupos__fase=fase)
     )
-    
+
     if not equipes_disponiveis:
         return {
             "success": False,
@@ -67,27 +118,27 @@ def sortear_equipes_automatico(fase_id: int) -> Dict:
             "equipes_distribuidas": 0,
             "message": "Nenhuma equipe disponível para sorteio"
         }
-    
+
     random.shuffle(equipes_disponiveis)
-    
+
     num_grupos = len(grupos)
     equipes_por_grupo = len(equipes_disponiveis) // num_grupos
     equipes_extras = len(equipes_disponiveis) % num_grupos
-    
+
     with transaction.atomic():
         idx = 0
         grupos_preenchidos = 0
-        
+
         for i, grupo in enumerate(grupos):
             num_equipes = equipes_por_grupo + (1 if i < equipes_extras else 0)
-            
+
             equipes_para_grupo = equipes_disponiveis[idx:idx + num_equipes]
             if equipes_para_grupo:
                 grupo.equipes.add(*equipes_para_grupo)
                 grupos_preenchidos += 1
-            
+
             idx += num_equipes
-    
+
     return {
         "success": True,
         "grupos_preenchidos": grupos_preenchidos,

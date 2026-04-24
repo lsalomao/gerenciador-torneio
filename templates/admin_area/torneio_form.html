@@ -9,27 +9,56 @@
     </div>
 
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <form method="post" class="space-y-4">
+        <form method="post" class="space-y-4" id="torneio-form">
             {% csrf_token %}
             {% for field in form %}
                 {% if field.is_hidden %}
                     {{ field }}
                 {% else %}
-                <div>
-                    <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                        {{ field.label }}
-                        {% if field.field.required %}<span class="text-red-500">*</span>{% endif %}
-                    </label>
-                    {{ field }}
-                    {% if field.help_text %}
-                    <p class="text-xs text-gray-400 mt-1">{{ field.help_text }}</p>
+                    {% if field.name == 'times_por_grupo' %}
+                        <div id="field-times_por_grupo" style="display: none;">
+                            <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                                {{ field.label }}
+                                {% if field.field.required %}<span class="text-red-500">*</span>{% endif %}
+                            </label>
+                            {{ field }}
+                            {% if field.help_text %}
+                            <p class="text-xs text-gray-400 mt-1">{{ field.help_text }}</p>
+                            {% endif %}
+                            {% if field.errors %}
+                            <p class="text-xs text-red-500 mt-1">{{ field.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <div>
+                            <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                                {{ field.label }}
+                                {% if field.field.required %}<span class="text-red-500">*</span>{% endif %}
+                            </label>
+                            {{ field }}
+                            {% if field.help_text %}
+                            <p class="text-xs text-gray-400 mt-1">{{ field.help_text }}</p>
+                            {% endif %}
+                            {% if field.errors %}
+                            <p class="text-xs text-red-500 mt-1">{{ field.errors.0 }}</p>
+                            {% endif %}
+                        </div>
                     {% endif %}
-                    {% if field.errors %}
-                    <p class="text-xs text-red-500 mt-1">{{ field.errors.0 }}</p>
-                    {% endif %}
-                </div>
                 {% endif %}
             {% endfor %}
+
+            <!-- Preview de Fases -->
+            <div id="fases-preview" class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg hidden">
+                <h3 class="text-sm font-semibold text-blue-900 mb-2">Preview das Fases</h3>
+                <p class="text-sm text-blue-800 leading-relaxed">
+                    Com essa configuração, serão criadas as seguintes fases:
+                </p>
+                <ul id="fases-list" class="mt-2 space-y-1 text-sm text-blue-800 list-disc list-inside">
+                </ul>
+                <p id="aviso-config" class="mt-3 text-xs text-amber-700 bg-amber-50 p-2 rounded border border-amber-200 hidden">
+                </p>
+            </div>
+
             <div class="flex gap-3 pt-4">
                 <button type="submit"
                         class="bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2.5 px-6 rounded-lg transition">
@@ -43,4 +72,74 @@
         </form>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Mapeamento de configurações para fases
+    const FASES_MAP = {
+        '4_so_eliminatoria': ['Semi-Final', '3º Lugar', 'Final'],
+        '8_so_eliminatoria': ['Quartas de Final', 'Semi-Final', '3º Lugar', 'Final'],
+        '16_so_eliminatoria': ['Oitavas de Final', 'Quartas de Final', 'Semi-Final', '3º Lugar', 'Final'],
+        '32_so_eliminatoria': ['Dezesseis Avos', 'Oitavas de Final', 'Quartas de Final', 'Semi-Final', '3º Lugar', 'Final'],
+        '4_grupos_e_eliminatoria': ['Fase de Grupos', 'Final'],
+        '8_grupos_e_eliminatoria': ['Fase de Grupos', 'Semi-Final', '3º Lugar', 'Final'],
+        '16_grupos_e_eliminatoria': ['Fase de Grupos', 'Quartas de Final', 'Semi-Final', '3º Lugar', 'Final'],
+        '32_grupos_e_eliminatoria': ['Fase de Grupos', 'Oitavas de Final', 'Quartas de Final', 'Semi-Final', '3º Lugar', 'Final'],
+    };
+
+    const AVISOS_MAP = {
+        '4_grupos_e_eliminatoria': 'Aviso: 4 times em grupos resulta em apenas a Final. Isso é válido mas incomum.',
+    };
+
+    const quantidadeTimesSelect = document.querySelector('[data-field="quantidade_times"]');
+    const formatoTorneioSelect = document.querySelector('[data-field="formato_torneio"]');
+    const timesGrupoField = document.getElementById('field-times_por_grupo');
+    const fasesPreviewDiv = document.getElementById('fases-preview');
+    const fasesList = document.getElementById('fases-list');
+    const avisoConfigDiv = document.getElementById('aviso-config');
+
+    function updatePreview() {
+        const quantidade = quantidadeTimesSelect.value;
+        const formato = formatoTorneioSelect.value;
+
+        // Atualizar visibilidade de times_por_grupo
+        if (formato === 'grupos_e_eliminatoria') {
+            timesGrupoField.style.display = 'block';
+        } else {
+            timesGrupoField.style.display = 'none';
+        }
+
+        // Atualizar preview de fases
+        if (quantidade && formato) {
+            const key = `${quantidade}_${formato}`;
+            const fases = FASES_MAP[key];
+
+            if (fases) {
+                fasesList.innerHTML = fases.map(f => `<li>${f}</li>`).join('');
+                fasesPreviewDiv.classList.remove('hidden');
+
+                // Exibir aviso se aplicável
+                if (AVISOS_MAP[key]) {
+                    avisoConfigDiv.textContent = AVISOS_MAP[key];
+                    avisoConfigDiv.classList.remove('hidden');
+                } else {
+                    avisoConfigDiv.classList.add('hidden');
+                }
+            } else {
+                fasesPreviewDiv.classList.add('hidden');
+            }
+        } else {
+            fasesPreviewDiv.classList.add('hidden');
+                        avisoConfigDiv.classList.add('hidden');
+        }
+    }
+
+    // Listeners para mudanças
+    quantidadeTimesSelect.addEventListener('change', updatePreview);
+    formatoTorneioSelect.addEventListener('change', updatePreview);
+
+    // Atualizar preview ao carregar página (para edição)
+    updatePreview();
+});
+</script>
 {% endblock %}
