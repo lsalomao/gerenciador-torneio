@@ -10,15 +10,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-main: #0D1B2A;
-            --bg-left: #1A2B3C;
-            --bg-right: #132233;
+            --bg-main: #0a1628;
+            --bg-left: #112038;
+            --bg-right: #0e1c30;
             --live: #FF6B00;
             --text-main: #FFFFFF;
-            --text-muted: #A0AEC0;
+            --text-muted: #8fa8c0;
             --badge-ok: #38A169;
             --badge-out: #718096;
             --badge-mid: #D69E2E;
+            --accent: #1e90ff;
         }
 
         * {
@@ -44,12 +45,13 @@
             cursor: none !important;
         }
 
+        /* ── TV SCREEN: header + main only, no footer row ── */
         .tv-screen {
             height: 100vh;
             display: grid;
-            grid-template-rows: auto minmax(0, 1fr) clamp(250px, 32vh, 400px);
-            gap: 12px;
-            padding: 14px;
+            grid-template-rows: auto 1fr;
+            gap: 8px;
+            padding: 10px 12px 10px;
             transition: opacity 0.35s ease;
         }
 
@@ -61,53 +63,55 @@
             opacity: 0.86;
         }
 
+        /* ── HEADER ── */
         .tv-header {
             position: relative;
             text-align: center;
-            padding: 8px 0;
+            padding: 4px 0 2px;
         }
 
         .tv-title {
             margin: 0;
-            font-size: clamp(2.1rem, 3.2vw, 3.1rem);
+            font-size: clamp(1.5rem, 2.4vw, 2.5rem);
             font-weight: 800;
             line-height: 1.05;
+            letter-spacing: -0.01em;
         }
 
         .tv-subtitle {
-            margin: 6px 0 0;
+            margin: 2px 0 0;
             color: var(--text-muted);
-            font-size: clamp(1rem, 1.25vw, 1.35rem);
+            font-size: clamp(0.75rem, 1vw, 1rem);
             font-weight: 600;
         }
 
         .tv-clock {
             position: absolute;
-            top: 8px;
+            top: 4px;
             right: 0;
             color: #cbd5e1;
-            font-size: 0.95rem;
+            font-size: 0.88rem;
             font-weight: 700;
             letter-spacing: 0.06em;
         }
 
         .live-indicator {
-            margin-top: 8px;
+            margin-top: 4px;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             background: rgba(255, 107, 0, 0.12);
             border: 1px solid rgba(255, 107, 0, 0.5);
             color: #ffd7bd;
             border-radius: 999px;
-            padding: 4px 10px;
-            font-size: 0.85rem;
+            padding: 3px 9px;
+            font-size: 0.78rem;
             font-weight: 700;
         }
 
         .live-dot {
-            width: 10px;
-            height: 10px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
             background: var(--live);
             animation: pulse 1.9s ease-in-out infinite;
@@ -119,41 +123,33 @@
 
         .fs-button {
             position: fixed;
-            right: 18px;
-            bottom: 18px;
+            right: 14px;
+            bottom: 14px;
             z-index: 30;
             border: 1px solid rgba(255, 255, 255, 0.35);
             background: rgba(8, 19, 30, 0.9);
             color: #e2e8f0;
             border-radius: 999px;
-            padding: 8px 14px;
-            font-size: 0.8rem;
+            padding: 6px 12px;
+            font-size: 0.75rem;
             font-weight: 700;
             letter-spacing: 0.04em;
+            cursor: pointer;
         }
 
         @keyframes pulse {
-            0% {
-                transform: scale(1);
-                opacity: 0.88;
-            }
-
-            50% {
-                transform: scale(1.25);
-                opacity: 0.38;
-            }
-
-            100% {
-                transform: scale(1);
-                opacity: 0.88;
-            }
+            0% { transform: scale(1); opacity: 0.88; }
+            50% { transform: scale(1.25); opacity: 0.38; }
+            100% { transform: scale(1); opacity: 0.88; }
         }
 
+        /* ── MAIN LAYOUT: left 65% / right 35% ── */
         .tv-main {
             display: grid;
-            grid-template-columns: 64% 36%;
-            gap: 12px;
+            grid-template-columns: 65% 35%;
+            gap: 10px;
             min-height: 0;
+            overflow: hidden;
         }
 
         .tv-main.final-mode {
@@ -204,7 +200,7 @@
         }
 
         .tv-main.final-mode .score-main {
-            font-size: clamp(8rem, 15vw, 13.5rem);
+            font-size: clamp(6rem, 12vw, 11rem);
             margin-top: 14px;
             letter-spacing: 0.04em;
         }
@@ -279,70 +275,85 @@
 
         .left-column,
         .right-column {
-            border-radius: 12px;
+            border-radius: 10px;
             min-height: 0;
+            overflow: hidden;
         }
 
         .left-column {
             background: var(--bg-left);
-            padding: 10px;
+            padding: 8px;
             min-height: 0;
+            display: flex;
+            flex-direction: column;
         }
 
         .section {
             min-height: 0;
             overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 8px;
             padding: 8px;
-            height: 100%;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
         }
 
         .section-title {
-            margin: 0 0 10px;
-            font-size: 1.22rem;
+            margin: 0 0 6px;
+            font-size: 0.85rem;
             color: #dbe5ef;
             text-transform: uppercase;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.1em;
             font-weight: 800;
+            flex-shrink: 0;
         }
 
+        /* ── GROUPS GRID: always 2 columns, fills height ── */
         .groups-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            height: calc(100% - 34px);
+            gap: 7px;
+            flex: 1;
+            min-height: 0;
         }
 
         .group-card {
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 10px;
-            padding: 9px;
-            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 7px 8px;
+            background: rgba(255, 255, 255, 0.025);
             transition: border-color 0.35s ease, box-shadow 0.35s ease;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
         }
 
         .group-card.highlight {
-            border-color: rgba(255, 107, 0, 0.8);
-            box-shadow: inset 0 0 0 1px rgba(255, 107, 0, 0.25);
+            border-color: rgba(255, 107, 0, 0.7);
+            box-shadow: inset 0 0 0 1px rgba(255, 107, 0, 0.2);
         }
 
         .group-name {
-            margin: 0 0 6px;
-            font-size: 1.1rem;
+            margin: 0 0 4px;
+            font-size: 0.82rem;
             font-weight: 800;
             color: #ecf4ff;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            flex-shrink: 0;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.88rem;
+            font-size: 0.78rem;
         }
 
         th,
         td {
-            padding: 4px;
+            padding: 3px 4px;
             text-align: center;
             transition: color 0.25s ease, background-color 0.25s ease;
         }
@@ -350,17 +361,18 @@
         th {
             color: var(--text-muted);
             font-weight: 600;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 0.7rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.07);
         }
 
         tbody tr:nth-child(even) {
-            background: rgba(255, 255, 255, 0.035);
+            background: rgba(255, 255, 255, 0.03);
         }
 
         td.team {
             text-align: left;
             font-weight: 600;
-            max-width: 220px;
+            max-width: 160px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -368,23 +380,24 @@
 
         .badge-dot {
             display: inline-block;
-            width: 8px;
-            height: 8px;
+            width: 6px;
+            height: 6px;
             border-radius: 50%;
-            margin-right: 4px;
+            margin-right: 3px;
+            vertical-align: middle;
         }
 
         .badge-label {
             display: inline-flex;
             align-items: center;
             border-radius: 999px;
-            padding: 1px 6px;
-            font-size: 0.64rem;
+            padding: 1px 5px;
+            font-size: 0.58rem;
             font-weight: 700;
-            margin-left: 6px;
+            margin-left: 4px;
             border: 1px solid transparent;
             text-transform: uppercase;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.03em;
         }
 
         .badge-classificado {
@@ -477,22 +490,22 @@
 
         .right-column {
             background: var(--bg-right);
-            padding: 10px;
-            display: grid;
-            grid-template-rows: auto 1fr;
-            gap: 10px;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
             min-height: 0;
-            align-content: start;
         }
 
         .live-card {
             border: 1px solid rgba(255, 107, 0, 0.55);
-            border-radius: 14px;
-            padding: 14px;
+            border-radius: 12px;
+            padding: 12px;
             background: rgba(255, 107, 0, 0.06);
-            display: grid;
-            gap: 14px;
-            align-content: start;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: center;
         }
 
         .champion-card {
@@ -634,21 +647,23 @@
         .teams-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            gap: 8px;
             text-align: center;
             font-weight: 800;
-            font-size: clamp(2rem, 2.5vw, 3rem);
+            font-size: clamp(1.3rem, 2vw, 2.2rem);
+            width: 100%;
         }
 
         .score-label {
             color: var(--text-muted);
-            font-size: 1.05rem;
+            font-size: 0.85rem;
             font-weight: 700;
+            text-align: center;
         }
 
         .score-main {
-            margin-top: 4px;
-            font-size: clamp(4.8rem, 6.4vw, 7.2rem);
+            margin-top: 2px;
+            font-size: clamp(3rem, 5vw, 5.5rem);
             line-height: 1;
             font-weight: 800;
             color: #fff;
@@ -676,49 +691,51 @@
 
         .next-card {
             border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            padding: 14px;
+            border-radius: 10px;
+            padding: 10px;
             background: rgba(255, 255, 255, 0.03);
-            display: grid;
-            gap: 12px;
-            align-content: start;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
         .upcoming-card {
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            padding: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 10px;
             background: rgba(255, 255, 255, 0.03);
-            display: grid;
-            grid-template-rows: auto 1fr;
+            display: flex;
+            flex-direction: column;
             min-height: 0;
+            flex: 1;
             overflow: hidden;
         }
 
         .upcoming-item {
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 8px;
-            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 7px;
+            padding: 8px 10px;
             background: rgba(255, 255, 255, 0.04);
-            display: grid;
-            gap: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
         }
 
         .upcoming-teams {
-            font-size: 1.2rem;
+            font-size: 1rem;
             font-weight: 800;
             text-align: center;
         }
 
         .upcoming-meta {
-            font-size: 0.95rem;
+            font-size: 0.78rem;
             color: var(--text-muted);
             text-align: center;
         }
 
         .next-title {
             text-align: center;
-            font-size: 1.1rem;
+            font-size: 0.78rem;
             letter-spacing: 0.08em;
             color: var(--text-muted);
             font-weight: 700;
@@ -728,60 +745,37 @@
         .next-teams {
             text-align: center;
             font-weight: 800;
-            font-size: 2rem;
+            font-size: 1.4rem;
         }
 
         .next-meta {
             text-align: center;
-            font-size: 1rem;
+            font-size: 0.82rem;
             color: var(--text-muted);
         }
 
-
         .upcoming-list {
-            display: grid;
-            gap: 8px;
-            align-content: start;
-            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            overflow: hidden;
             min-height: 0;
-            padding-right: 4px;
+            flex: 1;
+            margin-top: 6px;
         }
 
         .empty-state {
-            height: calc(100% - 26px);
+            flex: 1;
             display: grid;
             place-items: center;
             color: var(--text-muted);
-            font-size: 1rem;
+            font-size: 0.9rem;
             font-weight: 600;
         }
 
+        /* ── Live footer hidden by default on TV ── */
         .live-footer {
-            border-radius: 10px;
-            overflow: hidden;
-            background: #000;
-            height: 100%;
-            min-height: 0;
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            display: grid;
-            grid-template-rows: auto 1fr;
-        }
-
-        .live-footer-title {
-            font-size: 0.76rem;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            color: #d3d9e2;
-            background: rgba(19, 34, 51, 0.92);
-            padding: 6px 10px;
-            text-transform: uppercase;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-        }
-
-        .live-footer iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
+            display: none;
         }
     </style>
 </head>
@@ -794,7 +788,6 @@
             <h1 class="tv-title" id="tv-title">{{ torneio.nome }}</h1>
             <p class="tv-subtitle" id="tv-subtitle">Carregando fase...</p>
             <div class="tv-clock" id="tv-clock">--:--</div>
-            <div class="live-indicator hidden" id="header-live-indicator"><span class="live-dot"></span> AO VIVO</div>
         </header>
 
         <main class="tv-main">
