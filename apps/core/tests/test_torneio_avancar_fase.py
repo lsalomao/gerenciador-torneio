@@ -106,14 +106,16 @@ class TorneioAvancaFaseTest(TestCase):
         self.partida2.status = 'FINALIZADA'
         self.partida2.save()
 
-    def test_avancar_fase_button_appears_on_detail_page(self):
-        """Verifica se o botão aparece na página de detalhe do torneio."""
+    def test_torneio_detail_exibe_stepper_sem_botao_avancar_fase(self):
         url = reverse('admin_torneio_detail', kwargs={'pk': self.torneio.pk})
         response = self.client.get(url)
-        
+
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Avançar Fase')
-        self.assertContains(response, '/avancar-fase/')
+        self.assertContains(response, 'Criação')
+        self.assertContains(response, 'Inscrições')
+        self.assertContains(response, 'Em Andamento')
+        self.assertContains(response, 'Encerrado')
+        self.assertNotContains(response, 'Avançar Fase')
 
     def test_avancar_fase_gera_eliminatoria(self):
         """Testa se clicar no botão gera a fase eliminatória automaticamente."""

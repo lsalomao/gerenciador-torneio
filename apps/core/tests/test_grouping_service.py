@@ -113,8 +113,9 @@ class GroupingServiceTest(TestCase):
         
         resultado = sortear_equipes_automatico(fase_nova.id)
         
-        self.assertFalse(resultado['success'])
-        self.assertIn('grupo', resultado['message'].lower())
+        self.assertTrue(resultado['success'])
+        self.assertEqual(fase_nova.grupos.count(), 2)
+        self.assertEqual(resultado['equipes_distribuidas'], 8)
     
     def test_alocar_equipe_manual_sucesso(self):
         resultado = alocar_equipe_manual(self.grupo_a.id, self.equipes[0].id)

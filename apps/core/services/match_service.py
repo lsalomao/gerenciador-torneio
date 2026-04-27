@@ -4,6 +4,7 @@ from apps.core.models import Partida, SetResult
 from apps.core.services.validation_service import validar_set
 from apps.core.services.ranking_service import rankear_grupo
 from apps.core.services.advancement_service import processar_finalizacao_partida
+from apps.core.services.torneio_status_service import atualizar_status_torneio
 
 
 def iniciar_partida(partida: Partida) -> Dict:
@@ -11,6 +12,7 @@ def iniciar_partida(partida: Partida) -> Dict:
         return {"success": False, "message": "Partida não está em estado AGENDADA"}
     partida.status = 'AO_VIVO'
     partida.save()
+    atualizar_status_torneio(partida.fase.torneio)
     return {"success": True, "message": "Partida iniciada"}
 
 
@@ -75,6 +77,7 @@ def adicionar_set(partida: Partida, numero_set: int, pontos_a: int, pontos_b: in
                 processar_finalizacao_partida(partida)
             except Exception:
                 pass
+            atualizar_status_torneio(partida.fase.torneio)
             return {"success": True, "message": "Set adicionado. Partida finalizada (equipe A venceu).", "set": set_obj}
 
         if ganhos_b >= regra.sets_para_vencer:
@@ -90,6 +93,7 @@ def adicionar_set(partida: Partida, numero_set: int, pontos_a: int, pontos_b: in
                 processar_finalizacao_partida(partida)
             except Exception:
                 pass
+            atualizar_status_torneio(partida.fase.torneio)
             return {"success": True, "message": "Set adicionado. Partida finalizada (equipe B venceu).", "set": set_obj}
 
         return {"success": True, "message": "Set adicionado", "set": set_obj}

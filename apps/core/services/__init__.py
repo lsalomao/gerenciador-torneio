@@ -16,6 +16,10 @@ from .phase_reset_service import (
     resetar_fase,
     obter_estatisticas_fase,
 )
+from .torneio_status_service import (
+    calcular_status_automatico_torneio,
+    atualizar_status_torneio,
+)
 
 __all__ = [
     'sortear_equipes_automatico',
@@ -30,4 +34,6 @@ __all__ = [
     'pode_resetar_fase',
     'resetar_fase',
     'obter_estatisticas_fase',
+    'calcular_status_automatico_torneio',
+    'atualizar_status_torneio',
 ]

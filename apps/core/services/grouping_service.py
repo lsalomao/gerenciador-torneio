@@ -99,12 +99,35 @@ def sortear_equipes_automatico(fase_id: int) -> Dict:
     grupos = list(fase.grupos.order_by('id'))
 
     if not grupos:
-        return {
-            "success": False,
-            "grupos_preenchidos": 0,
-            "equipes_distribuidas": 0,
-            "message": "Nenhum grupo cadastrado para esta fase"
-        }
+        times_por_grupo = fase.torneio.times_por_grupo or 0
+        total_para_distribuir = quantidade_configurada or total_equipes_cadastradas
+
+        if times_por_grupo <= 0:
+            return {
+                "success": False,
+                "grupos_preenchidos": 0,
+                "equipes_distribuidas": 0,
+                "message": "Configuração inválida de times por grupo"
+            }
+
+        if total_para_distribuir <= 0:
+            return {
+                "success": False,
+                "grupos_preenchidos": 0,
+                "equipes_distribuidas": 0,
+                "message": "Nenhuma equipe disponível para sorteio"
+            }
+
+        quantidade_grupos = max(1, (total_para_distribuir + times_por_grupo - 1) // times_por_grupo)
+
+        with transaction.atomic():
+            for indice in range(quantidade_grupos):
+                Grupo.objects.create(
+                    fase=fase,
+                    nome=_nome_grupo_por_indice(indice)
+                )
+
+        grupos = list(fase.grupos.order_by('id'))
 
     equipes_disponiveis = list(
         Equipe.objects.filter(torneio=fase.torneio)

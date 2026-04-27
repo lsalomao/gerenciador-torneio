@@ -119,6 +119,7 @@ from .services.validation_service import validar_set
 from .services.ranking_service import rankear_grupo
 from .services.advancement_service import processar_finalizacao_partida
 from .services.public_data_service import get_dashboard_context, get_current_highlight, get_upcoming_matches
+from .services.torneio_status_service import atualizar_status_torneio
 
 
 def _configurar_formularios(form, fase):
@@ -162,6 +163,11 @@ def _finalizar_partida(partida, regra):
             pass
     try:
         processar_finalizacao_partida(partida)
+    except Exception:
+        pass
+
+    try:
+        atualizar_status_torneio(partida.fase.torneio)
     except Exception:
         pass
 
@@ -255,12 +261,63 @@ def torneio_create(request):
 @login_required
 def torneio_detail(request, pk):
     torneio = get_object_or_404(Torneio, pk=pk, owner=request.user)
+    atualizar_status_torneio(torneio)
     equipes = torneio.equipes.all()
-    fases = torneio.fases.all()
+    fases = torneio.fases.prefetch_related('grupos__equipes').all()
+
+    fases_com_partidas = fases.filter(partidas__isnull=False).distinct()
+    fase_atual = fases_com_partidas.filter(partidas__status='AO_VIVO').order_by('ordem').first()
+    if not fase_atual:
+        fase_atual = fases_com_partidas.exclude(partidas__status='FINALIZADA').order_by('ordem').first()
+    if not fase_atual:
+        fase_atual = fases.order_by('ordem').first()
+
+    fases_grupo = []
+    for fase in fases:
+        if fase.tipo != 'GRUPO':
+            continue
+        grupos = list(fase.grupos.all())
+        for grupo in grupos:
+            ranking = rankear_grupo(grupo)
+            grupo.classificacao_atual = [
+                {
+                    'posicao': item['posicao'],
+                    'equipe': item['equipe'],
+                    'p': item['vitorias'] * 3,
+                    'j': item['jogos'],
+                    'v': item['vitorias'],
+                    'd': item['derrotas'],
+                    'sp': item['pontos_feitos'],
+                    'sc': item['pontos_tomados'],
+                    'ss': item['saldo_pontos'],
+                }
+                for item in ranking
+            ]
+            grupo.classificados_limite = fase.equipes_avancam
+        fases_grupo.append({
+            'fase': fase,
+            'grupos': grupos,
+        })
+
+    stepper_statuses = ['CRIACAO', 'INSCRICOES', 'ANDAMENTO', 'ENCERRADO']
+    status_atual_indice = stepper_statuses.index(torneio.status) if torneio.status in stepper_statuses else 0
+    stepper_items = [
+        {
+            'key': status,
+            'label': torneio.get_status_display() if status == torneio.status else dict(Torneio.STATUS_CHOICES).get(status, status),
+            'is_done': idx < status_atual_indice,
+            'is_current': idx == status_atual_indice,
+        }
+        for idx, status in enumerate(stepper_statuses)
+    ]
+
     return render(request, 'admin_area/torneio_detail.html', {
         'torneio': torneio,
         'equipes': equipes,
         'fases': fases,
+        'fases_grupo': fases_grupo,
+        'fase_atual': fase_atual,
+        'stepper_items': stepper_items,
     })
 
 
@@ -394,6 +451,7 @@ def equipe_create(request, torneio_pk):
             equipe = form.save(commit=False)
             equipe.torneio = torneio
             equipe.save()
+            atualizar_status_torneio(torneio)
             formset = JogadorFormSet(request.POST, instance=equipe)
             if formset.is_valid():
                 formset.save()
@@ -528,8 +586,10 @@ def fase_gerar_eliminatoria(request, pk):
         resultado = gerar_eliminatoria(fase.id)
         if resultado['success']:
             messages.success(request, resultado['message'])
+            atualizar_status_torneio(fase.torneio)
             return redirect('admin_fase_detail', pk=resultado['fase_eliminatoria_id'])
         messages.error(request, resultado['message'])
+        atualizar_status_torneio(fase.torneio)
         return redirect('admin_fase_detail', pk=fase.pk)
 
     return render(request, 'admin_area/fase_generate_bracket.html', {'fase': fase})
@@ -577,6 +637,7 @@ def fase_sortear_equipes(request, pk):
                 messages.warning(request, f"Equipes sorteadas com sucesso, mas houve falha ao gerar partidas: {resultado_partidas['message']}")
                 for erro in resultado_partidas.get('erros', []):
                     messages.warning(request, erro)
+            atualizar_status_torneio(fase.torneio)
         else:
             messages.error(request, resultado['message'])
 
@@ -604,7 +665,8 @@ def fase_gerar_partidas(request, pk):
             if resultado.get('erros'):
                 for erro in resultado['erros']:
                     messages.warning(request, erro)
-        
+
+        atualizar_status_torneio(fase.torneio)
         return redirect('admin_fase_detail', pk=fase.pk)
     
     grupos = fase.grupos.prefetch_related('equipes').all()

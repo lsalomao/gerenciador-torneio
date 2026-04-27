@@ -21,18 +21,29 @@
                 <span class="text-sm text-gray-400">{{ torneio.local }}</span>
             </div>
         </div>
-        <div class="flex gap-2">            
-            <form method="post" action="/admin-area/torneios/3/avancar-fase/">
-                {% csrf_token %}
-                <button type="submit"
-                    class="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2 px-4 rounded-lg transition">
-                    Avançar Fase
-                </button>
-            </form>
-            <a href="{% url 'admin_torneio_edit' torneio.pk %}"
-               class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 px-4 rounded-lg transition">
-                Editar Torneio
-            </a>
+        <a href="{% url 'admin_torneio_edit' torneio.pk %}"
+           class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 px-4 rounded-lg transition">
+            Editar Torneio
+        </a>
+    </div>
+    <div class="mt-5 bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <div class="flex items-center">
+            {% for step in stepper_items %}
+            <div class="flex items-center {% if not forloop.last %}flex-1{% endif %}">
+                <div class="flex flex-col items-center text-center min-w-[88px]">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold
+                        {% if step.is_done %}bg-green-500 text-white
+                        {% elif step.is_current %}bg-blue-600 text-white ring-4 ring-blue-100
+                        {% else %}bg-gray-200 text-gray-500{% endif %}">
+                        {% if step.is_done %}✓{% else %}{{ forloop.counter }}{% endif %}
+                    </div>
+                    <span class="mt-2 text-xs font-semibold {% if step.is_current %}text-blue-700{% elif step.is_done %}text-green-700{% else %}text-gray-400{% endif %}">{{ step.label }}</span>
+                </div>
+                {% if not forloop.last %}
+                <div class="h-0.5 w-full mx-2 {% if step.is_done %}bg-green-400{% else %}bg-gray-200{% endif %}"></div>
+                {% endif %}
+            </div>
+            {% endfor %}
         </div>
     </div>
 </div>
@@ -54,7 +65,6 @@
 
 <!-- EQUIPES E FASES - LAYOUT LADO A LADO -->
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <!-- EQUIPES - Coluna menor com scroll -->
     <div class="lg:col-span-1 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col max-h-[600px]">
         <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
             <h2 class="text-lg font-bold text-gray-800">Equipes</h2>
@@ -73,10 +83,10 @@
                         <p class="text-xs text-gray-400">{{ equipe.jogadores.count }} jogadores</p>
                     </div>
                     <div class="flex gap-2 flex-shrink-0">
-                        <a href="{% url 'admin_equipe_edit' equipe.pk %}" 
+                        <a href="{% url 'admin_equipe_edit' equipe.pk %}"
                         class="text-xl leading-none text-gray-400 hover:text-blue-600 hover:scale-100 transition-transform">✎</a>
-                        
-                        <a href="{% url 'admin_equipe_delete' equipe.pk %}" 
+
+                        <a href="{% url 'admin_equipe_delete' equipe.pk %}"
                         class="text-xl leading-none text-gray-400 hover:text-red-600 hover:scale-100 transition-transform">✕</a>
                     </div>
                 </div>
@@ -88,9 +98,7 @@
         {% endif %}
     </div>
 
-    <!-- FASES - Coluna maior -->
     <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col max-h-[600px]">
-        
         {% if fases %}
         <div class="divide-y divide-gray-100 overflow-y-auto flex-1">
             {% for fase in fases %}
@@ -105,7 +113,12 @@
                                 {% if fase.tipo == 'GRUPO' %}bg-blue-50 text-blue-600{% else %}bg-purple-50 text-purple-600{% endif %}">
                                 {{ fase.get_tipo_display }}
                             </span>
+                            {% if fase_atual and fase.pk == fase_atual.pk %}
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-blue-600 text-white">▶ Atual</span>
+                            {% endif %}
+                            {% if fase.regra %}
                             <span class="text-xs text-gray-400">{{ fase.regra.nome }}</span>
+                            {% endif %}
                         </div>
                     </div>
                     <div class="flex gap-1 flex-shrink-0">
@@ -123,4 +136,65 @@
         {% endif %}
     </div>
 </div>
+
+{% if fases_grupo %}
+<div class="mt-6 space-y-4">
+    {% for item in fases_grupo %}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <h3 class="text-base font-bold text-gray-800 mb-3">{{ item.fase.nome }}</h3>
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {% for grupo in item.grupos %}
+            <div class="border border-gray-200 rounded-lg overflow-hidden">
+                <div class="px-4 py-2 bg-gray-50 border-b border-gray-200">
+                    <p class="font-semibold text-gray-800">{{ grupo.nome }}</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead>
+                            <tr class="text-xs text-gray-500 uppercase border-b border-gray-200">
+                                <th class="text-left px-3 py-2">Classificação</th>
+                                <th class="text-center px-2 py-2">P</th>
+                                <th class="text-center px-2 py-2">J</th>
+                                <th class="text-center px-2 py-2">V</th>
+                                <th class="text-center px-2 py-2">D</th>
+                                <th class="text-center px-2 py-2">SP</th>
+                                <th class="text-center px-2 py-2">SC</th>
+                                <th class="text-center px-2 py-2">SS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in grupo.classificacao_atual %}
+                            <tr class="border-b border-gray-100 last:border-b-0 {% if row.posicao <= grupo.classificados_limite %}bg-green-50/50{% endif %}">
+                                <td class="px-3 py-2 {% if row.posicao <= grupo.classificados_limite %}border-l-4 border-green-500{% endif %}">
+                                    <div class="flex items-center gap-2">
+                                        <span class="text-gray-500 w-4">{{ row.posicao }}</span>
+                                        <span class="font-medium text-gray-800">{{ row.equipe.nome }}</span>
+                                    </div>
+                                </td>
+                                <td class="text-center px-2 py-2 font-semibold text-gray-800">{{ row.p }}</td>
+                                <td class="text-center px-2 py-2 text-gray-700">{{ row.j }}</td>
+                                <td class="text-center px-2 py-2 text-gray-700">{{ row.v }}</td>
+                                <td class="text-center px-2 py-2 text-gray-700">{{ row.d }}</td>
+                                <td class="text-center px-2 py-2 text-gray-700">{{ row.sp }}</td>
+                                <td class="text-center px-2 py-2 text-gray-700">{{ row.sc }}</td>
+                                <td class="text-center px-2 py-2 {% if row.ss > 0 %}text-green-700{% elif row.ss < 0 %}text-red-700{% else %}text-gray-700{% endif %}">{{ row.ss }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="8" class="px-3 py-3 text-center text-gray-400 text-xs">Sem dados de classificação até o momento.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="px-3 py-2 text-xs text-gray-500 border-t border-gray-100 bg-gray-50">
+                    P: Pontos • J: Jogos • V: Vitórias • D: Derrotas • SP: Pontos Pró • SC: Pontos Contra • SS: Saldo de Pontos
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
 {% endblock %}

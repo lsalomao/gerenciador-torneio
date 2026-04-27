@@ -27,7 +27,7 @@ class PublicTvViewTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Copa TV')
-        self.assertContains(response, 'const intervalMs = 12000;')
+        self.assertContains(response, 'const intervalMs = "12000";')
         self.assertContains(response, f'/api/v1/public/torneio/{self.torneio.slug}/dashboard/')
         self.assertContains(response, f'/api/v1/public/torneio/{self.torneio.slug}/live/')
         self.assertContains(response, 'Entrar em Tela Cheia')

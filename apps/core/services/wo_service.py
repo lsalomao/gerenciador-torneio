@@ -2,6 +2,7 @@ from typing import Dict
 from apps.core.models import Partida, Equipe
 from apps.core.services.ranking_service import rankear_grupo
 from apps.core.services.advancement_service import processar_finalizacao_partida
+from apps.core.services.torneio_status_service import atualizar_status_torneio
 
 
 def aplicar_wo(partida: Partida, vencedor: Equipe) -> Dict:
@@ -30,5 +31,7 @@ def aplicar_wo(partida: Partida, vencedor: Equipe) -> Dict:
         processar_finalizacao_partida(partida)
     except Exception:
         pass
+
+    atualizar_status_torneio(partida.fase.torneio)
 
     return {"success": True, "message": "W.O. aplicado e partida finalizada", "vencedor": vencedor.id}
